@@ -1,0 +1,7 @@
+[package]
+name = "clipstack"
+version = "0.1.0"
+authors = ["Richard McCormack <rmccormack@ebsco.com>"]
+
+[dependencies]
+winapi = { version = "0.3", features = ["winuser", "errhandlingapi", "winbase"] }
