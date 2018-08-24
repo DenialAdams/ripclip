@@ -9,6 +9,7 @@ pub type WindowHandle = NonNull<winapi::shared::windef::HWND__>;
 
 pub type ModuleHandle = NonNull<winapi::shared::minwindef::HINSTANCE__>;
 
+#[derive(Clone, Copy)]
 pub struct ClassAtom(num::NonZeroU16);
 
 pub struct ErrorCode(u32);
@@ -54,8 +55,7 @@ impl ErrorCode {
 pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
    let mut module_handle: winapi::shared::minwindef::HMODULE = unsafe { mem::uninitialized() };
 
-   let result =
-      unsafe { winapi::um::libloaderapi::GetModuleHandleExW(0, ptr::null(), &mut module_handle) };
+   let result = unsafe { winapi::um::libloaderapi::GetModuleHandleExW(0, ptr::null(), &mut module_handle) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
@@ -148,6 +148,135 @@ pub fn add_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode
    Ok(())
 }
 
+pub fn remove_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode> {
+   let success = unsafe {
+      let success_int = winapi::um::winuser::RemoveClipboardFormatListener(hwnd.as_ptr());
+      success_int == 1
+   };
+
+   if !success {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
+#[repr(u32)]
+#[derive(Copy, Clone)]
+pub enum ClipboardFormat {
+   UnicodeText = 13,
+}
+
+pub fn is_clipboard_format_available(format: ClipboardFormat) -> bool {
+   unsafe { winapi::um::winuser::IsClipboardFormatAvailable(format as u32) != 0 }
+}
+
+#[derive(Clone)]
+pub struct ClipboardHandle {
+   _inner: (),
+}
+
+#[derive(Clone)]
+pub struct OwnedClipboardHandle {
+   _inner: (),
+}
+
+pub struct ClipboardText(Vec<u8>);
+
+impl ClipboardHandle {
+   pub fn get_text(&self) -> Result<ClipboardText, ErrorCode> {
+      let handle = unsafe { winapi::um::winuser::GetClipboardData(ClipboardFormat::UnicodeText as u32) };
+
+      if handle.is_null() {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         return Err(ErrorCode(code));
+      }
+
+      unsafe {
+         let str_len = {
+            let mut index = 1;
+            while *((handle as *const u8).offset(index - 1)) != 0 || *((handle as *const u8).offset(index)) != 0 {
+               index += 2;
+            }
+            index as usize + 1
+         };
+         println!("{}", str_len);
+         let mut buffer: Vec<u8> = Vec::with_capacity(str_len);
+         buffer.set_len(str_len);
+
+         ptr::copy(handle as *const u8, buffer.as_mut_ptr(), str_len);
+
+         println!("{:?}", buffer);
+
+         Ok(ClipboardText(buffer))
+      }
+   }
+
+   // Set clipboard content
+   pub fn empty(self) -> Result<OwnedClipboardHandle, ErrorCode> {
+      let result = unsafe {
+         winapi::um::winuser::EmptyClipboard()
+      };
+
+      if result == 0 {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         return Err(ErrorCode(code));
+      }
+
+      mem::forget(self);
+
+      Ok(OwnedClipboardHandle {
+         _inner: (),
+      })
+   }
+}
+
+fn close_clipboard() -> Result<(), ErrorCode> {
+   let result = unsafe { winapi::um::winuser::CloseClipboard() };
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code))
+   }
+
+   Ok(())
+}
+
+impl Drop for ClipboardHandle {
+   fn drop(&mut self) {
+      close_clipboard().unwrap();
+   }
+}
+
+impl OwnedClipboardHandle {
+   pub fn set_text(&self, clipboard_text: &mut ClipboardText) -> Result<(), ErrorCode> {
+      let result = unsafe { winapi::um::winuser::SetClipboardData(ClipboardFormat::UnicodeText as u32, clipboard_text.0.as_mut_ptr() as *mut winapi::ctypes::c_void) };
+
+      if result.is_null() {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         return Err(ErrorCode(code));
+      }
+
+      Ok(())
+   }
+}
+
+impl Drop for OwnedClipboardHandle {
+   fn drop(&mut self) {
+      close_clipboard().unwrap();
+   }
+}
+
+pub fn open_clipboard(hwnd: WindowHandle) -> Result<ClipboardHandle, ErrorCode> {
+   let result = unsafe { winapi::um::winuser::OpenClipboard(hwnd.as_ptr()) };
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(ClipboardHandle { _inner: () })
+}
+
 pub struct Message {
    pub hwnd: Option<WindowHandle>,
    pub message: u32,
@@ -166,11 +295,7 @@ impl From<winapi::um::winuser::MSG> for Message {
    }
 }
 
-pub fn get_message(
-   hwnd: Option<WindowHandle>,
-   min_value: u32,
-   max_value: u32,
-) -> Result<Message, ErrorCode> {
+pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -> Result<Message, ErrorCode> {
    let mut message: winapi::um::winuser::MSG = unsafe { mem::uninitialized() };
    let result = unsafe {
       winapi::um::winuser::GetMessageW(
