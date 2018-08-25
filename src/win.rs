@@ -1,4 +1,4 @@
-//! Safe wrapper around the windows API
+//! "Safe" "wrapper" around the windows clipboard API
 
 use std::ptr::{self, NonNull};
 use std::string::FromUtf16Error;

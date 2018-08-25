@@ -30,16 +30,13 @@ fn main() {
       if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
          println!("Unicode text :)");
          win::remove_clipboard_format_listener(window).unwrap();
-         println!("Unregistered listener");
-         let clipboard = win::open_clipboard(window).unwrap();
-         let mut text_buf = clipboard.get_text().unwrap();
-         let owned_clipboard = clipboard.empty().unwrap();
-         println!("cleared clipboard");
-         println!("about to set text");
-         owned_clipboard.set_text(&mut text_buf).unwrap();
-         println!("set clipboard");
+         {
+            let clipboard = win::open_clipboard(window).unwrap();
+            let mut text_buf = clipboard.get_text().unwrap();
+            let owned_clipboard = clipboard.empty().unwrap();
+            owned_clipboard.set_text(&mut text_buf).unwrap();
+         }
          win::add_clipboard_format_listener(window).unwrap();
-         println!("registered listener");
       }
    }
 }
