@@ -215,9 +215,7 @@ impl ClipboardHandle {
 
    // Set clipboard content
    pub fn empty(self) -> Result<OwnedClipboardHandle, ErrorCode> {
-      let result = unsafe {
-         winapi::um::winuser::EmptyClipboard()
-      };
+      let result = unsafe { winapi::um::winuser::EmptyClipboard() };
 
       if result == 0 {
          let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
@@ -226,9 +224,7 @@ impl ClipboardHandle {
 
       mem::forget(self);
 
-      Ok(OwnedClipboardHandle {
-         _inner: (),
-      })
+      Ok(OwnedClipboardHandle { _inner: () })
    }
 }
 
@@ -236,7 +232,7 @@ fn close_clipboard() -> Result<(), ErrorCode> {
    let result = unsafe { winapi::um::winuser::CloseClipboard() };
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
-      return Err(ErrorCode(code))
+      return Err(ErrorCode(code));
    }
 
    Ok(())
@@ -249,13 +245,21 @@ impl Drop for ClipboardHandle {
 }
 
 impl OwnedClipboardHandle {
-   pub fn set_text(&self, clipboard_text: &mut ClipboardText) -> Result<(), ErrorCode> {
-      let result = unsafe { winapi::um::winuser::SetClipboardData(ClipboardFormat::UnicodeText as u32, clipboard_text.0.as_mut_ptr() as *mut winapi::ctypes::c_void) };
+   pub fn set_text(&self, mut clipboard_text: ClipboardText) -> Result<(), ErrorCode> {
+      let result = unsafe {
+         winapi::um::winuser::SetClipboardData(
+            ClipboardFormat::UnicodeText as u32,
+            clipboard_text.0.as_mut_ptr() as *mut winapi::ctypes::c_void,
+         )
+      };
 
       if result.is_null() {
          let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
          return Err(ErrorCode(code));
       }
+
+      // I'm not sure how (if) this buffer ever gets freed...
+      mem::forget(clipboard_text);
 
       Ok(())
    }
@@ -309,6 +313,10 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
    if result == -1 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
+   }
+
+   if result == 0 {
+      unimplemented!();
    }
 
    Ok(message.into())

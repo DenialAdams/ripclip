@@ -32,9 +32,9 @@ fn main() {
          win::remove_clipboard_format_listener(window).unwrap();
          {
             let clipboard = win::open_clipboard(window).unwrap();
-            let mut text_buf = clipboard.get_text().unwrap();
+            let text_buf = clipboard.get_text().unwrap();
             let owned_clipboard = clipboard.empty().unwrap();
-            owned_clipboard.set_text(&mut text_buf).unwrap();
+            owned_clipboard.set_text(text_buf).unwrap();
          }
          win::add_clipboard_format_listener(window).unwrap();
       }
