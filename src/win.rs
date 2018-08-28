@@ -182,6 +182,7 @@ pub struct OwnedClipboardHandle {
    _inner: (),
 }
 
+#[derive(Clone)]
 pub struct ClipboardText(Vec<u8>);
 
 impl ClipboardHandle {

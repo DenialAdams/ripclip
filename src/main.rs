@@ -18,6 +18,8 @@ fn main() {
       std::ptr::NonNull::new(winapi::um::winuser::HWND_MESSAGE),
    ).unwrap();
 
+   let mut clipboard_stack = Vec::new();
+
    win::add_clipboard_format_listener(window).unwrap();
 
    loop {
@@ -30,13 +32,15 @@ fn main() {
       if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
          println!("Unicode text :)");
          win::remove_clipboard_format_listener(window).unwrap();
-         {
+         let clipboard_text = {
             let clipboard = win::open_clipboard(window).unwrap();
             let text_buf = clipboard.get_text().unwrap();
             let owned_clipboard = clipboard.empty().unwrap();
-            owned_clipboard.set_text(text_buf).unwrap();
-         }
+            owned_clipboard.set_text(text_buf.clone()).unwrap();
+            text_buf
+         };
          win::add_clipboard_format_listener(window).unwrap();
+         clipboard_stack.push(clipboard_text);
       }
    }
 }
