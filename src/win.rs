@@ -5,9 +5,14 @@ use std::string::FromUtf16Error;
 use std::{fmt, mem, num};
 use winapi;
 
-pub type WindowHandle = NonNull<winapi::shared::windef::HWND__>;
+#[derive(Clone, Copy)]
+pub struct WindowHandle(NonNull<winapi::shared::windef::HWND__>);
 
-pub type ModuleHandle = NonNull<winapi::shared::minwindef::HINSTANCE__>;
+#[derive(Clone, Copy)]
+pub struct ModuleHandle(NonNull<winapi::shared::minwindef::HINSTANCE__>);
+
+pub const MESSAGE_PARENT: WindowHandle =
+   unsafe { WindowHandle(NonNull::new_unchecked(winapi::um::winuser::HWND_MESSAGE)) };
 
 #[derive(Clone, Copy)]
 pub struct ClassAtom(num::NonZeroU16);
@@ -52,6 +57,34 @@ impl ErrorCode {
    }
 }
 
+bitflags! {
+   pub struct Modifiers: u32 {
+      const ALT = 0x0001;
+      const CONTROL = 0x0002;
+      const NO_REPEAT = 0x4000;
+      const SHIFT = 0x0004;
+      const WIN = 0x0008;
+   }
+}
+
+pub fn register_hotkey(hwnd: Option<WindowHandle>, id: u16, modifiers: Modifiers, key: u32) -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::winuser::RegisterHotKey(
+         hwnd.map_or(ptr::null_mut(), |x| x.0.as_ptr()),
+         mem::transmute::<u32, i32>(id as u32),
+         modifiers.bits(),
+         key,
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
 pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
    let mut module_handle: winapi::shared::minwindef::HMODULE = unsafe { mem::uninitialized() };
 
@@ -62,7 +95,7 @@ pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(NonNull::new_unchecked(module_handle)) }
+   unsafe { Ok(ModuleHandle(NonNull::new_unchecked(module_handle))) }
 }
 
 pub fn register_class_ex(
@@ -79,7 +112,7 @@ pub fn register_class_ex(
       lpfnWndProc: message_fn,
       cbClsExtra: 0,
       cbWndExtra: 0,
-      hInstance: module_handle.as_ptr(),
+      hInstance: module_handle.0.as_ptr(),
       hIcon: ptr::null_mut(),
       hCursor: ptr::null_mut(),
       hbrBackground: ptr::null_mut(),
@@ -98,7 +131,7 @@ pub fn register_class_ex(
    unsafe { Ok(ClassAtom(num::NonZeroU16::new_unchecked(result))) }
 }
 
-#[allow(too_many_arguments)] // Roughly mirroring the windows API, can't blame me for argument count
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))] // Roughly mirroring the windows API, can't blame me for argument count
 pub fn create_window_ex(
    ex_style: u32,
    class_atom: ClassAtom,
@@ -119,7 +152,7 @@ pub fn create_window_ex(
          y,
          width,
          height,
-         parent.map_or(ptr::null_mut(), |x| x.as_ptr()),
+         parent.map_or(ptr::null_mut(), |x| x.0.as_ptr()),
          ptr::null_mut(),
          ptr::null_mut(),
          ptr::null_mut(),
@@ -131,16 +164,13 @@ pub fn create_window_ex(
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(NonNull::new_unchecked(handle)) }
+   unsafe { Ok(WindowHandle(NonNull::new_unchecked(handle))) }
 }
 
 pub fn add_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode> {
-   let success = unsafe {
-      let success_int = winapi::um::winuser::AddClipboardFormatListener(hwnd.as_ptr());
-      success_int == 1
-   };
+   let result = unsafe { winapi::um::winuser::AddClipboardFormatListener(hwnd.0.as_ptr()) };
 
-   if !success {
+   if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
@@ -150,7 +180,7 @@ pub fn add_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode
 
 pub fn remove_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode> {
    let success = unsafe {
-      let success_int = winapi::um::winuser::RemoveClipboardFormatListener(hwnd.as_ptr());
+      let success_int = winapi::um::winuser::RemoveClipboardFormatListener(hwnd.0.as_ptr());
       success_int == 1
    };
 
@@ -273,7 +303,7 @@ impl Drop for OwnedClipboardHandle {
 }
 
 pub fn open_clipboard(hwnd: WindowHandle) -> Result<ClipboardHandle, ErrorCode> {
-   let result = unsafe { winapi::um::winuser::OpenClipboard(hwnd.as_ptr()) };
+   let result = unsafe { winapi::um::winuser::OpenClipboard(hwnd.0.as_ptr()) };
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
@@ -291,8 +321,13 @@ pub struct Message {
 
 impl From<winapi::um::winuser::MSG> for Message {
    fn from(msg: winapi::um::winuser::MSG) -> Message {
+      let window_handle = if let Some(handle) = NonNull::new(msg.hwnd) {
+         Some(WindowHandle(handle))
+      } else {
+         None
+      };
       Message {
-         hwnd: WindowHandle::new(msg.hwnd),
+         hwnd: window_handle,
          message: msg.message,
          w_param: msg.wParam,
          l_param: msg.lParam,
@@ -305,7 +340,7 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
    let result = unsafe {
       winapi::um::winuser::GetMessageW(
          &mut message,
-         hwnd.map_or(ptr::null_mut(), |x| x.as_ptr()),
+         hwnd.map_or(ptr::null_mut(), |x| x.0.as_ptr()),
          min_value,
          max_value,
       )
