@@ -23,7 +23,8 @@ fn main() {
    let mut clipboard_stack: Vec<win::ClipboardText> = Vec::new();
 
    win::add_clipboard_format_listener(window).unwrap();
-   win::register_hotkey(Some(window), 0, win::Modifiers::SHIFT, 0x43).unwrap();
+   win::register_hotkey(Some(window), 0, win::Modifiers::SHIFT | win::Modifiers::CONTROL, 0x43).unwrap();
+   win::register_hotkey(Some(window), 1, win::Modifiers::SHIFT | win::Modifiers::CONTROL, 0x51).unwrap();
 
    loop {
       let message = win::get_message(
@@ -32,19 +33,34 @@ fn main() {
          winapi::um::winuser::WM_CLIPBOARDUPDATE,
       ).unwrap();
       match message.message {
-         winapi::um::winuser::WM_HOTKEY => {
-            clipboard_stack.pop();
-            win::remove_clipboard_format_listener(window).unwrap();
-            {
-               let clipboard = win::open_clipboard(window).unwrap();
-               let owned_clipboard = clipboard.empty().unwrap();
-               if let Some(text) = clipboard_stack.last() {
-                  owned_clipboard.set_text(text.clone()).unwrap();
+         winapi::um::winuser::WM_HOTKEY => match message.w_param {
+            0 => {
+               clipboard_stack.pop();
+               win::remove_clipboard_format_listener(window).unwrap();
+               {
+                  let clipboard = win::open_clipboard(window).unwrap();
+                  let owned_clipboard = clipboard.empty().unwrap();
+                  if let Some(text) = clipboard_stack.last() {
+                     owned_clipboard.set_text(text.clone()).unwrap();
+                  }
                }
+               win::add_clipboard_format_listener(window).unwrap();
+               println!("Removed top of stack");
             }
-            win::add_clipboard_format_listener(window).unwrap();
-            println!("Removed top of stack");
-         }
+            1 => {
+               clipboard_stack.clear();
+               win::remove_clipboard_format_listener(window).unwrap();
+               {
+                  let clipboard = win::open_clipboard(window).unwrap();
+                  clipboard.empty().unwrap();
+               }
+               win::add_clipboard_format_listener(window).unwrap();
+               println!("Cleared stack");
+            }
+            _ => {
+               unreachable!();
+            }
+         },
          winapi::um::winuser::WM_CLIPBOARDUPDATE => {
             println!("Clipboard updated!");
             if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
