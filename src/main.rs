@@ -1,10 +1,25 @@
 #[macro_use]
 extern crate bitflags;
+extern crate dirs;
+extern crate pretty_env_logger;
+#[macro_use]
+extern crate log;
 extern crate winapi;
 
+mod config;
 mod win;
 
 fn main() {
+   pretty_env_logger::init();
+
+   let config = match config::load_config() {
+      Ok(config) => config,
+      Err(e) => {
+         eprintln!("Failed to parse config: {}", e);
+         std::process::exit(-1);
+      }
+   };
+
    let window = win::create_window_ex(
       0x0000_0000,
       win::register_class_ex(
