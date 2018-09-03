@@ -84,6 +84,20 @@ impl fmt::Display for ParseError {
    }
 }
 
+fn parse_hotkey(hotkey: &str) -> Result<(), ParseError> {
+   let mut tokens_iter = hotkey.split('+').rev();
+   let key = tokens_iter.next().unwrap().trim();
+   match key.chars().next().to_lowercase() {
+      'c' => println!("bepis"),
+      _ => panic!(),
+   }
+   for modifier in tokens_iter {
+      let modifier = modifier.trim();
+      // Verify modifier, add it to hotkey
+   }
+   // Return Hotkey we can use in register_hotkey
+}
+
 pub fn load_config() -> Result<Config, ParseError> {
    let path_opt = dirs::config_dir();
    if let Some(mut path) = path_opt {
