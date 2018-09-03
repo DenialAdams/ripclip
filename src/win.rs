@@ -516,13 +516,10 @@ impl ClipboardHandle {
             }
             index as usize + 1
          };
-         println!("{}", str_len);
          let mut buffer: Vec<u8> = Vec::with_capacity(str_len);
          buffer.set_len(str_len);
 
          ptr::copy(handle as *const u8, buffer.as_mut_ptr(), str_len);
-
-         println!("{:?}", buffer);
 
          Ok(ClipboardText(buffer))
       }
