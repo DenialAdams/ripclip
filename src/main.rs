@@ -47,7 +47,7 @@ fn main() {
       win::register_hotkey(Some(window), 1, hotkey.modifiers, hotkey.key).unwrap();
    }
    if let Some(hotkey) = config.swap_keybinding {
-      win::register_hotkey(Some(window), 1, hotkey.modifiers, hotkey.key).unwrap();
+      win::register_hotkey(Some(window), 2, hotkey.modifiers, hotkey.key).unwrap();
    }
 
    loop {
