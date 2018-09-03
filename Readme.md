@@ -9,9 +9,3 @@ Some linux terminal emulators for windows abuse (imo) the windows clipboard by p
 Run with RUST_LOG=clipstack=trace as an environment variable to see debugging statements.
 ## Status
 Pushing, popping, swapping and clearing all should work with configurable bindings. The (optional) tray icon is a WIP.
-
-
-swapping
-window
-window
-window
