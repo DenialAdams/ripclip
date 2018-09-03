@@ -1,3 +1,5 @@
+#![feature(nll)]
+
 #[macro_use]
 extern crate bitflags;
 extern crate dirs;
@@ -67,7 +69,7 @@ fn main() {
                   }
                }
                win::add_clipboard_format_listener(window).unwrap();
-               println!("Removed top of stack");
+               trace!("Removed top of stack");
             }
             1 => {
                clipboard_stack.clear();
@@ -77,20 +79,25 @@ fn main() {
                   clipboard.empty().unwrap();
                }
                win::add_clipboard_format_listener(window).unwrap();
-               println!("Cleared stack");
+               trace!("Cleared stack");
             }
             2 => {
-               // SWAP TODO
-               unimplemented!();
+               if clipboard_stack.len() >= 2 {
+                  let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
+                  clipboard_stack.push(second_from_top);
+                  trace!("Swapped top 2 elements of stack")
+               } else {
+                  trace!("Stack too small to swap")
+               }
             }
             _ => {
                unreachable!();
             }
          },
          winapi::um::winuser::WM_CLIPBOARDUPDATE => {
-            println!("Clipboard updated!");
+            trace!("Clipboard updated!");
             if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
-               println!("Unicode text :)");
+               trace!("Unicode text available");
                win::remove_clipboard_format_listener(window).unwrap();
                let clipboard_text = {
                   let clipboard = win::open_clipboard(window).unwrap();
@@ -101,6 +108,9 @@ fn main() {
                };
                win::add_clipboard_format_listener(window).unwrap();
                clipboard_stack.push(clipboard_text);
+               trace!("Pushed clipboard contents onto stack")
+            } else {
+               trace!("Unicode text unavailable");
             }
          }
          _ => {
