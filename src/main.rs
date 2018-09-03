@@ -66,10 +66,12 @@ fn main() {
                   let owned_clipboard = clipboard.empty().unwrap();
                   if let Some(text) = clipboard_stack.last() {
                      owned_clipboard.set_text(text.clone()).unwrap();
+                     trace!("Removed top of stack");
+                  } else {
+                     trace!("Nothing on top of stack to remove");
                   }
                }
                win::add_clipboard_format_listener(window).unwrap();
-               trace!("Removed top of stack");
             }
             1 => {
                clipboard_stack.clear();
@@ -85,6 +87,13 @@ fn main() {
                if clipboard_stack.len() >= 2 {
                   let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
                   clipboard_stack.push(second_from_top);
+                  win::remove_clipboard_format_listener(window).unwrap();
+                  {
+                     let clipboard = win::open_clipboard(window).unwrap();
+                     let owned_clipboard = clipboard.empty().unwrap();
+                     owned_clipboard.set_text(clipboard_stack.last().unwrap().clone()).unwrap();
+                  }
+                  win::add_clipboard_format_listener(window).unwrap();
                   trace!("Swapped top 2 elements of stack")
                } else {
                   trace!("Stack too small to swap")
