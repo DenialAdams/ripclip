@@ -68,6 +68,25 @@ bitflags! {
    }
 }
 
+pub enum ParseModifierError {
+   UnknownModifier(String),
+}
+
+impl FromStr for Modifiers {
+   type Err = ParseModifierError;
+
+   fn from_str(s: &str) -> Result<Modifiers, ParseModifierError> {
+      let s = s.to_ascii_lowercase();
+      Ok(match s.as_ref() {
+         "alt" => Modifiers::ALT,
+         "control" | "cntrl" | "ctrl" => Modifiers::CONTROL,
+         "shift" => Modifiers::SHIFT,
+         "win" | "windows" | "super" => Modifiers::WIN,
+         _ => return Err(ParseModifierError::UnknownModifier(s)),
+      })
+   }
+}
+
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VirtualKey {
@@ -260,8 +279,8 @@ impl FromStr for VirtualKey {
          "x" => VirtualKey::X,
          "y" => VirtualKey::Y,
          "z" => VirtualKey::Z,
-         "left windows" | "left win" => VirtualKey::LeftWindows,
-         "right windows" | "right win" => VirtualKey::RightWindows,
+         "left windows" | "left win" | "left super" => VirtualKey::LeftWindows,
+         "right windows" | "right win" | "right super" => VirtualKey::RightWindows,
          "applications" | "apps" => VirtualKey::Applications,
          "sleep" => VirtualKey::Sleep,
          "numpad zero" | "numpad 0" => VirtualKey::NumpadZero,
@@ -526,6 +545,7 @@ impl ClipboardHandle {
 
 fn close_clipboard() -> Result<(), ErrorCode> {
    let result = unsafe { winapi::um::winuser::CloseClipboard() };
+
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
@@ -569,6 +589,7 @@ impl Drop for OwnedClipboardHandle {
 
 pub fn open_clipboard(hwnd: WindowHandle) -> Result<ClipboardHandle, ErrorCode> {
    let result = unsafe { winapi::um::winuser::OpenClipboard(hwnd.0.as_ptr()) };
+
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
