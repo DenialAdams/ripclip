@@ -5,21 +5,22 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::usize;
+use win;
 
-const DEFAULT_CONFIG: &'static [u8] = b"\
+const DEFAULT_CONFIG: &[u8] = b"\
 max_stack_size = 100
 show_tray_icon = false
-pop_keybinding = Ctrl + Shift + C
+pop_keybinding = Control + Shift + C
 clear_keybinding = None
 swap_keybinding = None
 ";
 
 pub struct Config {
-   max_stack_size: usize,
-   show_tray_icon: bool,
-   pop_keybinding: Option<String>,
-   clear_keybinding: Option<String>,
-   swap_keybinding: Option<String>,
+   pub max_stack_size: usize,
+   pub show_tray_icon: bool,
+   pub pop_keybinding: Option<Hotkey>,
+   pub clear_keybinding: Option<Hotkey>,
+   pub swap_keybinding: Option<Hotkey>,
 }
 
 impl Default for Config {
@@ -37,8 +38,8 @@ impl Default for Config {
 pub enum LineError {
    Malformed,
    UnknownOption(String),
-   UnknownModifier,
-   UnknownKey,
+   UnknownModifier(String),
+   UnknownKey(String),
    ExpectedBool(String),
    ExpectedInt(ParseIntError),
 }
@@ -50,9 +51,9 @@ impl fmt::Display for LineError {
             f,
             "Line must be an option, followed by an equals sign, followed by a value."
          ),
-         LineError::UnknownOption(option) => write!(f, "Unknown option `{}`", option),
-         LineError::UnknownModifier => write!(f, "Unknown modifier ``"),
-         LineError::UnknownKey => write!(f, "Unknown key ``"),
+         LineError::UnknownOption(got) => write!(f, "Unknown option `{}`", got),
+         LineError::UnknownModifier(got) => write!(f, "Unknown modifier `{}`", got),
+         LineError::UnknownKey(got) => write!(f, "Unknown key `{}`", got),
          LineError::ExpectedBool(got) => write!(f, "Expected value to be one of `true` or `false`, got {}", got),
          LineError::ExpectedInt(err) => write!(
             f,
@@ -60,6 +61,14 @@ impl fmt::Display for LineError {
             usize::MAX,
             err
          ),
+      }
+   }
+}
+
+impl From<win::ParseVirtualKeyError> for LineError {
+   fn from(e: win::ParseVirtualKeyError) -> LineError {
+      match e {
+         win::ParseVirtualKeyError::UnknownKey(got) => LineError::UnknownKey(got),
       }
    }
 }
@@ -84,18 +93,30 @@ impl fmt::Display for ParseError {
    }
 }
 
-fn parse_hotkey(hotkey: &str) -> Result<(), ParseError> {
+pub struct Hotkey {
+   pub key: win::VirtualKey,
+   pub modifiers: win::Modifiers,
+}
+
+fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
    let mut tokens_iter = hotkey.split('+').rev();
-   let key = tokens_iter.next().unwrap().trim();
-   match key.chars().next().to_lowercase() {
-      'c' => println!("bepis"),
-      _ => panic!(),
+   let raw_key = tokens_iter.next().unwrap().trim();
+   if raw_key == "None" {
+      return Ok(None);
    }
+   let key: win::VirtualKey = raw_key.parse()?;
+   if key.is_modifier() {
+      warn!(
+         "Encountered a modifier key `{}` in key position while parsing hotkey. Is this intended?",
+         raw_key
+      );
+   }
+   let modifiers = win::Modifiers::empty();
    for modifier in tokens_iter {
       let modifier = modifier.trim();
       // Verify modifier, add it to hotkey
    }
-   // Return Hotkey we can use in register_hotkey
+   Ok(Some(Hotkey { key, modifiers }))
 }
 
 pub fn load_config() -> Result<Config, ParseError> {
@@ -130,13 +151,22 @@ pub fn load_config() -> Result<Config, ParseError> {
                   x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
                },
                "pop_keybinding" => {
-                  // TODO
+                  config.pop_keybinding = match parse_hotkey(pieces[1].trim()) {
+                     Ok(binding) => binding,
+                     Err(e) => return Err(ParseError::Line(e, i)),
+                  }
                }
                "clear_keybinding" => {
-                  // TODO
+                  config.clear_keybinding = match parse_hotkey(pieces[1].trim()) {
+                     Ok(binding) => binding,
+                     Err(e) => return Err(ParseError::Line(e, i)),
+                  }
                }
                "swap_keybinding" => {
-                  // TODO
+                  config.swap_keybinding = match parse_hotkey(pieces[1].trim()) {
+                     Ok(binding) => binding,
+                     Err(e) => return Err(ParseError::Line(e, i)),
+                  }
                }
                x => return Err(ParseError::Line(LineError::UnknownOption(x.to_owned()), i)),
             }

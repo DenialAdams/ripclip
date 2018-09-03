@@ -38,8 +38,15 @@ fn main() {
    let mut clipboard_stack: Vec<win::ClipboardText> = Vec::new();
 
    win::add_clipboard_format_listener(window).unwrap();
-   win::register_hotkey(Some(window), 0, win::Modifiers::SHIFT | win::Modifiers::CONTROL, 0x43).unwrap();
-   win::register_hotkey(Some(window), 1, win::Modifiers::SHIFT | win::Modifiers::CONTROL, 0x51).unwrap();
+   if let Some(hotkey) = config.pop_keybinding {
+      win::register_hotkey(Some(window), 0, hotkey.modifiers, hotkey.key).unwrap();
+   }
+   if let Some(hotkey) = config.clear_keybinding {
+      win::register_hotkey(Some(window), 1, hotkey.modifiers, hotkey.key).unwrap();
+   }
+   if let Some(hotkey) = config.swap_keybinding {
+      win::register_hotkey(Some(window), 1, hotkey.modifiers, hotkey.key).unwrap();
+   }
 
    loop {
       let message = win::get_message(
@@ -71,6 +78,10 @@ fn main() {
                }
                win::add_clipboard_format_listener(window).unwrap();
                println!("Cleared stack");
+            }
+            2 => {
+               // SWAP TODO
+               unimplemented!();
             }
             _ => {
                unreachable!();
