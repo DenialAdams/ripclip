@@ -38,6 +38,7 @@ fn main() {
    ).unwrap();
 
    let mut clipboard_stack: Vec<win::ClipboardText> = Vec::new();
+   let mut managing_clipboard = false;
 
    win::add_clipboard_format_listener(window).unwrap();
    if let Some(hotkey) = config.pop_keybinding {
@@ -59,7 +60,11 @@ fn main() {
       match message.message {
          winapi::um::winuser::WM_HOTKEY => match message.w_param {
             0 => {
-               clipboard_stack.pop();
+               if managing_clipboard {
+                  clipboard_stack.pop();
+               }
+               managing_clipboard = true;
+               
                win::remove_clipboard_format_listener(window).unwrap();
                {
                   let clipboard = win::open_clipboard(window).unwrap();
@@ -81,9 +86,14 @@ fn main() {
                   clipboard.empty().unwrap();
                }
                win::add_clipboard_format_listener(window).unwrap();
+               managing_clipboard = true;
                trace!("Cleared stack");
             }
             2 => {
+               if !managing_clipboard {
+                  trace!("Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)");
+                  continue;
+               }
                if clipboard_stack.len() >= 2 {
                   let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
                   clipboard_stack.push(second_from_top);
@@ -119,7 +129,7 @@ fn main() {
                clipboard_stack.push(clipboard_text);
                trace!("Pushed clipboard contents onto stack")
             } else {
-               trace!("Unicode text unavailable");
+               managing_clipboard = false;
             }
          }
          _ => {
