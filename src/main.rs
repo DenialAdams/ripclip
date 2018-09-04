@@ -37,7 +37,7 @@ fn main() {
       Some(win::MESSAGE_PARENT),
    ).unwrap();
 
-   let mut clipboard_stack: Vec<win::ClipboardText> = Vec::new();
+   let mut clipboard_stack: Vec<win::ClipboardText> = Vec::with_capacity(config.max_stack_size);
    let mut managing_clipboard = false;
 
    win::add_clipboard_format_listener(window).unwrap();
@@ -127,6 +127,9 @@ fn main() {
                };
                win::add_clipboard_format_listener(window).unwrap();
                if !config.prevent_duplicate_push || Some(&clipboard_text) != clipboard_stack.last() {
+                  if clipboard_stack.len() == config.max_stack_size {
+                     clipboard_stack.remove(0);
+                  }
                   clipboard_stack.push(clipboard_text);
                }
                trace!("Pushed clipboard contents onto stack")
