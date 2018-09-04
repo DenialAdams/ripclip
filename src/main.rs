@@ -37,7 +37,11 @@ fn main() {
       Some(win::MESSAGE_PARENT),
    ).unwrap();
 
-   let mut clipboard_stack: Vec<win::ClipboardText> = Vec::with_capacity(config.max_stack_size);
+   let mut clipboard_stack: Vec<win::ClipboardText> = if let Some(max_stack_size) = config.max_stack_size {
+      Vec::with_capacity(max_stack_size)
+   } else {
+      Vec::new()
+   };
    let mut managing_clipboard = false;
 
    win::add_clipboard_format_listener(window).unwrap();
@@ -64,7 +68,7 @@ fn main() {
                   clipboard_stack.pop();
                }
                managing_clipboard = true;
-               
+
                win::remove_clipboard_format_listener(window).unwrap();
                {
                   let clipboard = win::open_clipboard(window).unwrap();
@@ -91,7 +95,9 @@ fn main() {
             }
             2 => {
                if !managing_clipboard {
-                  trace!("Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)");
+                  trace!(
+                     "Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)"
+                  );
                   continue;
                }
                if clipboard_stack.len() >= 2 {
@@ -101,7 +107,9 @@ fn main() {
                   {
                      let clipboard = win::open_clipboard(window).unwrap();
                      let owned_clipboard = clipboard.empty().unwrap();
-                     owned_clipboard.set_text(clipboard_stack.last().unwrap().clone()).unwrap();
+                     owned_clipboard
+                        .set_text(clipboard_stack.last().unwrap().clone())
+                        .unwrap();
                   }
                   win::add_clipboard_format_listener(window).unwrap();
                   trace!("Swapped top 2 elements of stack")
@@ -127,7 +135,7 @@ fn main() {
                };
                win::add_clipboard_format_listener(window).unwrap();
                if !config.prevent_duplicate_push || Some(&clipboard_text) != clipboard_stack.last() {
-                  if clipboard_stack.len() == config.max_stack_size {
+                  if Some(clipboard_stack.len()) == config.max_stack_size {
                      clipboard_stack.remove(0);
                   }
                   clipboard_stack.push(clipboard_text);

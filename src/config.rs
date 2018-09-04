@@ -17,7 +17,7 @@ prevent_duplicate_push = false
 ";
 
 pub struct Config {
-   pub max_stack_size: usize,
+   pub max_stack_size: Option<usize>,
    pub show_tray_icon: bool,
    pub pop_keybinding: Option<Hotkey>,
    pub clear_keybinding: Option<Hotkey>,
@@ -28,7 +28,7 @@ pub struct Config {
 impl Default for Config {
    fn default() -> Config {
       Config {
-         max_stack_size: 100,
+         max_stack_size: Some(100),
          show_tray_icon: false,
          pop_keybinding: None,
          clear_keybinding: None,
@@ -156,10 +156,17 @@ pub fn load_config() -> Result<Config, ParseError> {
                return Err(ParseError::Line(LineError::Malformed, i));
             }
             match pieces[0].trim() {
-               "max_stack_size" => match pieces[1].trim().parse::<usize>() {
-                  Ok(value) => config.max_stack_size = value,
-                  Err(e) => return Err(ParseError::Line(LineError::ExpectedInt(e), i)),
-               },
+               "max_stack_size" => {
+                  let opt_value = pieces[1].trim();
+                  config.max_stack_size = if opt_value == "None" {
+                     None
+                  } else {
+                     match opt_value.parse::<usize>() {
+                        Ok(value) => Some(value),
+                        Err(e) => return Err(ParseError::Line(LineError::ExpectedInt(e), i)),
+                     }
+                  }
+               }
                "show_tray_icon" => match pieces[1].trim() {
                   "true" => {
                      config.show_tray_icon = true;
@@ -177,7 +184,7 @@ pub fn load_config() -> Result<Config, ParseError> {
                      config.prevent_duplicate_push = false;
                   }
                   x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
-               }
+               },
                "pop_keybinding" => {
                   config.pop_keybinding = match parse_hotkey(pieces[1].trim()) {
                      Ok(binding) => binding,
