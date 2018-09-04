@@ -13,6 +13,7 @@ show_tray_icon = false
 pop_keybinding = Control + Shift + C
 clear_keybinding = None
 swap_keybinding = None
+prevent_duplicate_push = false
 ";
 
 pub struct Config {
@@ -21,6 +22,7 @@ pub struct Config {
    pub pop_keybinding: Option<Hotkey>,
    pub clear_keybinding: Option<Hotkey>,
    pub swap_keybinding: Option<Hotkey>,
+   pub prevent_duplicate_push: bool,
 }
 
 impl Default for Config {
@@ -31,6 +33,7 @@ impl Default for Config {
          pop_keybinding: None,
          clear_keybinding: None,
          swap_keybinding: None,
+         prevent_duplicate_push: false,
       }
    }
 }
@@ -166,6 +169,15 @@ pub fn load_config() -> Result<Config, ParseError> {
                   }
                   x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
                },
+               "prevent_duplicate_push" => match pieces[1].trim() {
+                  "true" => {
+                     config.prevent_duplicate_push = true;
+                  }
+                  "false" => {
+                     config.prevent_duplicate_push = false;
+                  }
+                  x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
+               }
                "pop_keybinding" => {
                   config.pop_keybinding = match parse_hotkey(pieces[1].trim()) {
                      Ok(binding) => binding,

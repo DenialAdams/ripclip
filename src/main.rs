@@ -126,7 +126,9 @@ fn main() {
                   text_buf
                };
                win::add_clipboard_format_listener(window).unwrap();
-               clipboard_stack.push(clipboard_text);
+               if !config.prevent_duplicate_push || Some(&clipboard_text) != clipboard_stack.last() {
+                  clipboard_stack.push(clipboard_text);
+               }
                trace!("Pushed clipboard contents onto stack")
             } else {
                managing_clipboard = false;
