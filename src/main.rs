@@ -44,6 +44,10 @@ fn main() {
    };
    let mut managing_clipboard = false;
 
+   if config.show_tray_icon {
+      
+   }
+
    win::add_clipboard_format_listener(window).unwrap();
    if let Some(hotkey) = config.pop_keybinding {
       win::register_hotkey(Some(window), 0, hotkey.modifiers, hotkey.key).unwrap();
@@ -66,6 +70,7 @@ fn main() {
             0 => {
                if managing_clipboard {
                   clipboard_stack.pop();
+                  trace!("Popped element off clipboard stack")
                }
                managing_clipboard = true;
 
@@ -75,9 +80,9 @@ fn main() {
                   let owned_clipboard = clipboard.empty().unwrap();
                   if let Some(text) = clipboard_stack.last() {
                      owned_clipboard.set_text(text.clone()).unwrap();
-                     trace!("Removed top of stack");
+                     trace!("Placed top of stack in clipboard");
                   } else {
-                     trace!("Nothing on top of stack to remove");
+                     trace!("Nothing on stack to place in clipboard");
                   }
                }
                win::add_clipboard_format_listener(window).unwrap();

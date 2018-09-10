@@ -640,3 +640,18 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
 
    Ok(message.into())
 }
+
+pub fn add_tray_icon() -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::shellapi::Shell_NotifyIconW(
+         winapi::um::shellapi::NIM_ADD,
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
