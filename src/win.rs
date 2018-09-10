@@ -642,17 +642,28 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
 }
 
 pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
-   let icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
+   let icon = unsafe { winapi::um::winuser::LoadIconW(
+      ptr::null_mut(),
+      winapi::um::winuser::IDI_APPLICATION,
+   ) };
+
+   if icon.is_null() {
+            let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   let mut icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
       cbSize: mem::size_of::<winapi::um::shellapi::NOTIFYICONDATAW>() as u32,
       hWnd: hwnd.0.as_ptr(),
       uID: id,
-      uFlags: 0, // TODO: icon support
+      uFlags: winapi::um::shellapi::NIF_ICON,
       uCallbackMessage: 0,
-      hIcon: ptr::null_mut(), // TODO: icon support
+      hIcon: icon,
       szTip: [0; 128],
       dwState: 0,
       dwStateMask: 0,
       szInfo: [0; 256],
+      u: unsafe { mem::zeroed() },
       szInfoTitle: [0; 64],
       dwInfoFlags: 0,
       guidItem: winapi::shared::guiddef::GUID {

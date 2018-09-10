@@ -45,7 +45,7 @@ fn main() {
    let mut managing_clipboard = false;
 
    if config.show_tray_icon {
-      
+      win::add_tray_icon(window, 0).unwrap();
    }
 
    win::add_clipboard_format_listener(window).unwrap();
@@ -144,8 +144,11 @@ fn main() {
                      clipboard_stack.remove(0);
                   }
                   clipboard_stack.push(clipboard_text);
+                  trace!("Pushed clipboard contents onto stack");
+               } else {
+                  trace!("Ignoring push because it was a duplicate");
                }
-               trace!("Pushed clipboard contents onto stack")
+               managing_clipboard = true;
             } else {
                managing_clipboard = false;
             }
