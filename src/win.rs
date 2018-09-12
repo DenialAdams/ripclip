@@ -6,14 +6,31 @@ use std::string::FromUtf16Error;
 use std::{fmt, mem, num};
 use winapi;
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub struct WindowHandle(NonNull<winapi::shared::windef::HWND__>);
 
-#[derive(Clone, Copy)]
-pub struct ModuleHandle(NonNull<winapi::shared::minwindef::HINSTANCE__>);
+impl Drop for WindowHandle {
+   fn drop(&mut self) {
+      destroy_window(self).unwrap();
+   }
+}
 
-pub const MESSAGE_PARENT: WindowHandle =
-   unsafe { WindowHandle(NonNull::new_unchecked(winapi::um::winuser::HWND_MESSAGE)) };
+fn destroy_window(hwnd: &mut WindowHandle) -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::winuser::DestroyWindow(
+         hwnd.0.as_ptr()
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
+pub struct ModuleHandle(NonNull<winapi::shared::minwindef::HINSTANCE__>);
 
 #[derive(Clone, Copy)]
 pub struct ClassAtom(num::NonZeroU16);
@@ -348,7 +365,7 @@ impl VirtualKey {
 }
 
 pub fn register_hotkey(
-   hwnd: Option<WindowHandle>,
+   hwnd: Option<&WindowHandle>,
    id: u16,
    modifiers: Modifiers,
    key: VirtualKey,
@@ -416,6 +433,12 @@ pub fn register_class_ex(
    unsafe { Ok(ClassAtom(num::NonZeroU16::new_unchecked(result))) }
 }
 
+pub enum WindowParent<'a> {
+   _NoParent,
+   _SomeParent(&'a WindowHandle),
+   MessageOnly,
+}
+
 pub fn create_window_ex(
    ex_style: u32,
    class_atom: ClassAtom,
@@ -424,8 +447,14 @@ pub fn create_window_ex(
    y: i32,
    width: i32,
    height: i32,
-   parent: Option<WindowHandle>,
+   parent: WindowParent,
 ) -> Result<WindowHandle, ErrorCode> {
+   let parent_ptr = match parent {
+      WindowParent::_NoParent => ptr::null_mut(),
+      WindowParent::_SomeParent(handle) => handle.0.as_ptr(),
+      WindowParent::MessageOnly => winapi::um::winuser::HWND_MESSAGE,
+   };
+
    let handle = unsafe {
       winapi::um::winuser::CreateWindowExW(
          ex_style,
@@ -436,7 +465,7 @@ pub fn create_window_ex(
          y,
          width,
          height,
-         parent.map_or(ptr::null_mut(), |x| x.0.as_ptr()),
+         parent_ptr,
          ptr::null_mut(),
          ptr::null_mut(),
          ptr::null_mut(),
@@ -451,7 +480,7 @@ pub fn create_window_ex(
    unsafe { Ok(WindowHandle(NonNull::new_unchecked(handle))) }
 }
 
-pub fn add_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode> {
+pub fn add_clipboard_format_listener(hwnd: &WindowHandle) -> Result<(), ErrorCode> {
    let result = unsafe { winapi::um::winuser::AddClipboardFormatListener(hwnd.0.as_ptr()) };
 
    if result == 0 {
@@ -462,7 +491,7 @@ pub fn add_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode
    Ok(())
 }
 
-pub fn remove_clipboard_format_listener(hwnd: WindowHandle) -> Result<(), ErrorCode> {
+pub fn remove_clipboard_format_listener(hwnd: &WindowHandle) -> Result<(), ErrorCode> {
    let success = unsafe {
       let success_int = winapi::um::winuser::RemoveClipboardFormatListener(hwnd.0.as_ptr());
       success_int == 1
@@ -582,7 +611,7 @@ impl Drop for OwnedClipboardHandle {
    }
 }
 
-pub fn open_clipboard(hwnd: WindowHandle) -> Result<ClipboardHandle, ErrorCode> {
+pub fn open_clipboard(hwnd: &WindowHandle) -> Result<ClipboardHandle, ErrorCode> {
    let result = unsafe { winapi::um::winuser::OpenClipboard(hwnd.0.as_ptr()) };
 
    if result == 0 {
@@ -616,7 +645,7 @@ impl From<winapi::um::winuser::MSG> for Message {
    }
 }
 
-pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -> Result<Message, ErrorCode> {
+pub fn get_message(hwnd: Option<&WindowHandle>, min_value: u32, max_value: u32) -> Result<Message, ErrorCode> {
    let mut message: winapi::um::winuser::MSG = unsafe { mem::uninitialized() };
    let result = unsafe {
       winapi::um::winuser::GetMessageW(
@@ -639,7 +668,51 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
    Ok(message.into())
 }
 
-pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
+pub struct TrayIcon<'a> {
+   id: u32,
+   hwnd: &'a WindowHandle,
+}
+
+impl<'a> Drop for TrayIcon<'a> {
+   fn drop(&mut self) {
+      remove_tray_icon(self).unwrap();
+   }
+}
+
+fn remove_tray_icon<'a>(tray_icon: &mut TrayIcon<'a>) -> Result<(), ErrorCode> {
+   let mut remove_tray_icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
+      cbSize: mem::size_of::<winapi::um::shellapi::NOTIFYICONDATAW>() as u32,
+      hWnd: tray_icon.hwnd.0.as_ptr(),
+      uID: tray_icon.id,
+      uFlags: winapi::um::shellapi::NIF_ICON,
+      uCallbackMessage: 0,
+      hIcon: ptr::null_mut(),
+      szTip: [0; 128],
+      dwState: 0,
+      dwStateMask: 0,
+      szInfo: [0; 256],
+      u: unsafe { mem::zeroed() },
+      szInfoTitle: [0; 64],
+      dwInfoFlags: 0,
+      guidItem: winapi::shared::guiddef::GUID {
+         Data1: 0,
+         Data2: 0,
+         Data3: 0,
+         Data4: [0; 8],
+      },
+      hBalloonIcon: ptr::null_mut(),
+   };
+   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_DELETE, &mut remove_tray_icon_options) };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
+pub fn add_tray_icon(hwnd: &WindowHandle, id: u32) -> Result<TrayIcon, ErrorCode> {
    let icon = unsafe { winapi::um::winuser::LoadIconW(ptr::null_mut(), winapi::um::winuser::IDI_APPLICATION) };
 
    if icon.is_null() {
@@ -647,7 +720,7 @@ pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
       return Err(ErrorCode(code));
    }
 
-   let mut icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
+   let mut add_tray_icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
       cbSize: mem::size_of::<winapi::um::shellapi::NOTIFYICONDATAW>() as u32,
       hWnd: hwnd.0.as_ptr(),
       uID: id,
@@ -669,12 +742,15 @@ pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
       },
       hBalloonIcon: ptr::null_mut(),
    };
-   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut icon_options) };
+   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut add_tray_icon_options) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
 
-   Ok(())
+   Ok(TrayIcon {
+      id,
+      hwnd,
+   })
 }
