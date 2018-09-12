@@ -486,12 +486,10 @@ pub fn is_clipboard_format_available(format: ClipboardFormat) -> bool {
    unsafe { winapi::um::winuser::IsClipboardFormatAvailable(format as u32) != 0 }
 }
 
-#[derive(Clone)]
 pub struct ClipboardHandle {
    _inner: (),
 }
 
-#[derive(Clone)]
 pub struct OwnedClipboardHandle {
    _inner: (),
 }
@@ -642,13 +640,10 @@ pub fn get_message(hwnd: Option<WindowHandle>, min_value: u32, max_value: u32) -
 }
 
 pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
-   let icon = unsafe { winapi::um::winuser::LoadIconW(
-      ptr::null_mut(),
-      winapi::um::winuser::IDI_APPLICATION,
-   ) };
+   let icon = unsafe { winapi::um::winuser::LoadIconW(ptr::null_mut(), winapi::um::winuser::IDI_APPLICATION) };
 
    if icon.is_null() {
-            let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
 
@@ -674,12 +669,7 @@ pub fn add_tray_icon(hwnd: WindowHandle, id: u32) -> Result<(), ErrorCode> {
       },
       hBalloonIcon: ptr::null_mut(),
    };
-   let result = unsafe {
-      winapi::um::shellapi::Shell_NotifyIconW(
-         winapi::um::shellapi::NIM_ADD,
-         &mut icon_options
-      )
-   };
+   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut icon_options) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
