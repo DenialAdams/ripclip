@@ -25,7 +25,7 @@ fn main() {
    let window = win::create_window_ex(
       0x0000_0000,
       win::register_class_ex(
-         win::get_module_handle_ex().unwrap(),
+         &win::get_module_handle_ex().unwrap(),
          Some(on_message),
          "ClipStack_class",
       ).unwrap(),

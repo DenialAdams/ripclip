@@ -32,8 +32,32 @@ fn destroy_window(hwnd: &mut WindowHandle) -> Result<(), ErrorCode> {
 
 pub struct ModuleHandle(NonNull<winapi::shared::minwindef::HINSTANCE__>);
 
-#[derive(Clone, Copy)]
-pub struct ClassAtom(num::NonZeroU16);
+pub struct ClassAtom<'a> {
+   atom: num::NonZeroU16,
+   hmodule: &'a ModuleHandle,
+}
+
+impl<'a> Drop for ClassAtom<'a> {
+   fn drop(&mut self) {
+      unregister_class(self).unwrap();
+   }
+}
+
+fn unregister_class<'a>(class_atom: &mut ClassAtom<'a>) -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::winuser::UnregisterClassW(
+         usize::from(class_atom.atom.get()) as *const u16,
+         class_atom.hmodule.0.as_ptr(),
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
 
 pub struct ErrorCode(u32);
 
@@ -400,11 +424,11 @@ pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
    unsafe { Ok(ModuleHandle(NonNull::new_unchecked(module_handle))) }
 }
 
-pub fn register_class_ex(
-   module_handle: ModuleHandle,
+pub fn register_class_ex<'a>(
+   module_handle: &'a ModuleHandle,
    message_fn: winapi::um::winuser::WNDPROC,
    name: &str,
-) -> Result<ClassAtom, ErrorCode> {
+) -> Result<ClassAtom<'a>, ErrorCode> {
    let mut utf16_name: Vec<u16> = name.encode_utf16().collect();
    utf16_name.push(0);
 
@@ -430,7 +454,10 @@ pub fn register_class_ex(
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(ClassAtom(num::NonZeroU16::new_unchecked(result))) }
+   unsafe { Ok(ClassAtom {
+      atom: num::NonZeroU16::new_unchecked(result),
+      hmodule: module_handle,
+   }) }
 }
 
 pub enum WindowParent<'a> {
@@ -458,7 +485,7 @@ pub fn create_window_ex(
    let handle = unsafe {
       winapi::um::winuser::CreateWindowExW(
          ex_style,
-         class_atom.0.get() as usize as *const u16,
+         usize::from(class_atom.atom.get()) as *const u16,
          ptr::null(),
          window_style,
          x,
