@@ -22,19 +22,18 @@ fn main() {
       }
    };
 
+   let module = win::get_module_handle_ex().unwrap();
+   let class = win::register_class_ex(&module, Some(on_message), "ClipStack_class").unwrap();
+
    let window = win::create_window_ex(
       0x0000_0000,
-      win::register_class_ex(
-         &win::get_module_handle_ex().unwrap(),
-         Some(on_message),
-         "ClipStack_class",
-      ).unwrap(),
+      &class,
       winapi::um::winuser::WS_MINIMIZE | winapi::um::winuser::WS_DISABLED,
       0,
       0,
       0,
       0,
-      win::WindowParent::MessageOnly,
+      &win::WindowParent::MessageOnly,
    ).unwrap();
 
    let mut clipboard_stack: Vec<win::ClipboardText> = if let Some(max_stack_size) = config.max_stack_size {
