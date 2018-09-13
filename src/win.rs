@@ -1,11 +1,93 @@
 //! "Safe" "wrapper" around the windows clipboard API
 
+use std::iter;
 use std::marker::PhantomData;
 use std::ptr::{self, NonNull};
 use std::str::FromStr;
 use std::string::FromUtf16Error;
 use std::{fmt, mem, num};
 use winapi;
+
+pub struct Menu {
+   inner: NonNull<winapi::shared::windef::HMENU__>,
+}
+
+impl Drop for Menu {
+   fn drop(&mut self) {
+      destroy_menu(self).unwrap();
+   }
+}
+
+fn destroy_menu(menu: &mut Menu) -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::winuser::DestroyMenu(
+         menu.inner.as_ptr()
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
+impl Menu {
+   pub fn append_line_break(&mut self, id: usize) -> Result<(), ErrorCode> {
+      let result = unsafe {
+         winapi::um::winuser::AppendMenuW(
+            self.inner.as_ptr(),
+            winapi::um::winuser::MF_SEPARATOR,
+            id,
+            ptr::null_mut(),
+         )
+      };
+
+      if result == 0 {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         return Err(ErrorCode(code));
+      }
+
+      Ok(())
+   }
+
+   pub fn append_text(&mut self, id: usize, text: &str) -> Result<(), ErrorCode> {
+      let result = unsafe {
+         winapi::um::winuser::AppendMenuW(
+            self.inner.as_ptr(),
+            winapi::um::winuser::MF_STRING,
+            id,
+            to_win_utf16(text).as_ptr(),
+         )
+      };
+
+      if result == 0 {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         return Err(ErrorCode(code));
+      }
+
+      Ok(())
+   }
+}
+
+fn create_menu() -> Result<Menu, ErrorCode> {
+   let menu = unsafe {
+      winapi::um::winuser::CreateMenu()
+   };
+
+   match NonNull::new(menu) {
+      Some(val) => {
+         Ok(Menu {
+            inner: val
+         })
+      }
+      None => {
+         let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+         Err(ErrorCode(code))
+      }
+   }
+}
 
 pub struct WindowHandle<'a> {
    inner: NonNull<winapi::shared::windef::HWND__>,
@@ -427,14 +509,15 @@ pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
    unsafe { Ok(ModuleHandle(NonNull::new_unchecked(module_handle))) }
 }
 
+fn to_win_utf16(inp: &str) -> Vec<u16> {
+   inp.encode_utf16().chain(iter::once(0)).collect()
+}
+
 pub fn register_class_ex<'a>(
    module_handle: &'a ModuleHandle,
    message_fn: winapi::um::winuser::WNDPROC,
    name: &str,
 ) -> Result<ClassAtom<'a>, ErrorCode> {
-   let mut utf16_name: Vec<u16> = name.encode_utf16().collect();
-   utf16_name.push(0);
-
    let options = winapi::um::winuser::WNDCLASSEXW {
       cbSize: mem::size_of::<winapi::um::winuser::WNDCLASSEXW>() as u32,
       style: 0x0000_0000,
@@ -446,7 +529,7 @@ pub fn register_class_ex<'a>(
       hCursor: ptr::null_mut(),
       hbrBackground: ptr::null_mut(),
       lpszMenuName: ptr::null(),
-      lpszClassName: utf16_name.as_ptr(),
+      lpszClassName: to_win_utf16(name).as_ptr(),
       hIconSm: ptr::null_mut(),
    };
 
