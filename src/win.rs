@@ -655,20 +655,17 @@ pub fn open_clipboard(hwnd: &WindowHandle) -> Result<ClipboardHandle, ErrorCode>
    Ok(ClipboardHandle { _inner: () })
 }
 
-pub struct Message<'a> {
-   pub hwnd: Option<WindowHandle<'a>>,
+pub struct Message {
+   pub hwnd: Option<NonNull<winapi::shared::windef::HWND__>>,
    pub message: u32,
    pub w_param: usize,
    pub l_param: isize,
 }
 
-impl<'a> From<winapi::um::winuser::MSG> for Message<'a> {
-   fn from(msg: winapi::um::winuser::MSG) -> Message<'a> {
+impl From<winapi::um::winuser::MSG> for Message {
+   fn from(msg: winapi::um::winuser::MSG) -> Message {
       let window_handle = if let Some(handle) = NonNull::new(msg.hwnd) {
-         Some(WindowHandle {
-            inner: handle,
-            class: PhantomData,
-         })
+         Some(handle)
       } else {
          None
       };
@@ -681,7 +678,7 @@ impl<'a> From<winapi::um::winuser::MSG> for Message<'a> {
    }
 }
 
-pub fn get_message<'b>(hwnd: Option<&WindowHandle>, min_value: u32, max_value: u32) -> Result<Message<'b>, ErrorCode> {
+pub fn get_message(hwnd: Option<&WindowHandle>, min_value: u32, max_value: u32) -> Result<Message, ErrorCode> {
    let mut message: winapi::um::winuser::MSG = unsafe { mem::uninitialized() };
    let result = unsafe {
       winapi::um::winuser::GetMessageW(
