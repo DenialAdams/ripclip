@@ -19,11 +19,7 @@ impl Drop for Menu {
 }
 
 fn destroy_menu(menu: &mut Menu) -> Result<(), ErrorCode> {
-   let result = unsafe {
-      winapi::um::winuser::DestroyMenu(
-         menu.inner.as_ptr()
-      )
-   };
+   let result = unsafe { winapi::um::winuser::DestroyMenu(menu.inner.as_ptr()) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
@@ -72,16 +68,10 @@ impl Menu {
 }
 
 pub fn create_popup_menu() -> Result<Menu, ErrorCode> {
-   let menu = unsafe {
-      winapi::um::winuser::CreatePopupMenu()
-   };
+   let menu = unsafe { winapi::um::winuser::CreatePopupMenu() };
 
    match NonNull::new(menu) {
-      Some(val) => {
-         Ok(Menu {
-            inner: val
-         })
-      }
+      Some(val) => Ok(Menu { inner: val }),
       None => {
          let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
          Err(ErrorCode(code))
@@ -93,7 +83,10 @@ pub fn draw_popup_menu(menu: &Menu, x: i32, y: i32, hwnd: &WindowHandle) -> Resu
    let result = unsafe {
       winapi::um::winuser::TrackPopupMenuEx(
          menu.inner.as_ptr(),
-         winapi::um::winuser::TPM_RIGHTALIGN | winapi::um::winuser::TPM_BOTTOMALIGN | winapi::um::winuser::TPM_LEFTBUTTON | winapi::um::winuser::TPM_NOANIMATION,
+         winapi::um::winuser::TPM_RIGHTALIGN
+            | winapi::um::winuser::TPM_BOTTOMALIGN
+            | winapi::um::winuser::TPM_LEFTBUTTON
+            | winapi::um::winuser::TPM_NOANIMATION,
          x,
          y,
          hwnd.inner.as_ptr(),
@@ -110,9 +103,7 @@ pub fn draw_popup_menu(menu: &Menu, x: i32, y: i32, hwnd: &WindowHandle) -> Resu
 }
 
 pub fn set_foreground_window(hwnd: &WindowHandle) -> Result<(), ()> {
-   let result = unsafe {
-      winapi::um::winuser::SetForegroundWindow(hwnd.inner.as_ptr())
-   };
+   let result = unsafe { winapi::um::winuser::SetForegroundWindow(hwnd.inner.as_ptr()) };
 
    if result == 0 {
       return Err(());
@@ -123,7 +114,7 @@ pub fn set_foreground_window(hwnd: &WindowHandle) -> Result<(), ()> {
 
 pub struct WindowHandle<'a> {
    inner: NonNull<winapi::shared::windef::HWND__>,
-   class: PhantomData<&'a ClassAtom<'a>>
+   class: PhantomData<&'a ClassAtom<'a>>,
 }
 
 impl<'a> WindowHandle<'a> {
@@ -139,11 +130,7 @@ impl<'a> Drop for WindowHandle<'a> {
 }
 
 fn destroy_window(hwnd: &mut WindowHandle) -> Result<(), ErrorCode> {
-   let result = unsafe {
-      winapi::um::winuser::DestroyWindow(
-         hwnd.inner.as_ptr()
-      )
-   };
+   let result = unsafe { winapi::um::winuser::DestroyWindow(hwnd.inner.as_ptr()) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
@@ -578,10 +565,12 @@ pub fn register_class_ex<'a>(
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(ClassAtom {
-      atom: num::NonZeroU16::new_unchecked(result),
-      hmodule: module_handle,
-   }) }
+   unsafe {
+      Ok(ClassAtom {
+         atom: num::NonZeroU16::new_unchecked(result),
+         hmodule: module_handle,
+      })
+   }
 }
 
 pub enum WindowParent<'a> {
@@ -628,10 +617,12 @@ pub fn create_window_ex<'a>(
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(WindowHandle{
-      inner: NonNull::new_unchecked(handle),
-      class: PhantomData,
-   }) }
+   unsafe {
+      Ok(WindowHandle {
+         inner: NonNull::new_unchecked(handle),
+         class: PhantomData,
+      })
+   }
 }
 
 pub fn add_clipboard_format_listener(hwnd: &WindowHandle) -> Result<(), ErrorCode> {
@@ -852,7 +843,9 @@ fn remove_tray_icon<'a>(tray_icon: &mut TrayIcon<'a>) -> Result<(), ErrorCode> {
       },
       hBalloonIcon: ptr::null_mut(),
    };
-   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_DELETE, &mut remove_tray_icon_options) };
+   let result = unsafe {
+      winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_DELETE, &mut remove_tray_icon_options)
+   };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
@@ -864,7 +857,12 @@ fn remove_tray_icon<'a>(tray_icon: &mut TrayIcon<'a>) -> Result<(), ErrorCode> {
 
 /// Truncates any tooltip ecxeeding 254 bytes (when encoded as UTF-16)
 /// (that can result in corrupted unicode... don't pass long strings!)
-pub fn add_tray_icon<'a>(hwnd: &'a WindowHandle, id: u32, callback_id: u32, tooltip: &str) -> Result<TrayIcon<'a>, ErrorCode> {
+pub fn add_tray_icon<'a>(
+   hwnd: &'a WindowHandle,
+   id: u32,
+   callback_id: u32,
+   tooltip: &str,
+) -> Result<TrayIcon<'a>, ErrorCode> {
    let icon = unsafe { winapi::um::winuser::LoadIconW(ptr::null_mut(), winapi::um::winuser::IDI_APPLICATION) };
 
    if icon.is_null() {
@@ -879,13 +877,18 @@ pub fn add_tray_icon<'a>(hwnd: &'a WindowHandle, id: u32, callback_id: u32, tool
    }
 
    let mut nofify_icon_data_union: winapi::um::shellapi::NOTIFYICONDATAW_u = unsafe { mem::zeroed() };
-   unsafe { *nofify_icon_data_union.uVersion_mut() = winapi::um::shellapi::NOTIFYICON_VERSION_4; }
+   unsafe {
+      *nofify_icon_data_union.uVersion_mut() = winapi::um::shellapi::NOTIFYICON_VERSION_4;
+   }
 
    let mut add_tray_icon_options = winapi::um::shellapi::NOTIFYICONDATAW {
       cbSize: mem::size_of::<winapi::um::shellapi::NOTIFYICONDATAW>() as u32,
       hWnd: hwnd.inner.as_ptr(),
       uID: id,
-      uFlags: winapi::um::shellapi::NIF_ICON | winapi::um::shellapi::NIF_MESSAGE | winapi::um::shellapi::NIF_TIP | winapi::um::shellapi::NIF_SHOWTIP,
+      uFlags: winapi::um::shellapi::NIF_ICON
+         | winapi::um::shellapi::NIF_MESSAGE
+         | winapi::um::shellapi::NIF_TIP
+         | winapi::um::shellapi::NIF_SHOWTIP,
       uCallbackMessage: callback_id,
       hIcon: icon,
       szTip: tooltip_text,
@@ -904,20 +907,20 @@ pub fn add_tray_icon<'a>(hwnd: &'a WindowHandle, id: u32, callback_id: u32, tool
       hBalloonIcon: ptr::null_mut(),
    };
 
-   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut add_tray_icon_options) };
+   let result =
+      unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut add_tray_icon_options) };
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
 
-   let result = unsafe { winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_SETVERSION, &mut add_tray_icon_options) };
+   let result = unsafe {
+      winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_SETVERSION, &mut add_tray_icon_options)
+   };
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
 
-   Ok(TrayIcon {
-      id,
-      hwnd,
-   })
+   Ok(TrayIcon { id, hwnd })
 }

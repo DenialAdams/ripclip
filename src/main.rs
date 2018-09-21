@@ -78,11 +78,7 @@ fn main() {
    }
 
    loop {
-      let message = win::get_message(
-         Some(&window),
-         0,
-         0,
-      ).unwrap();
+      let message = win::get_message(Some(&window), 0, 0).unwrap();
       match message.message {
          winapi::um::winuser::WM_HOTKEY => match message.w_param {
             0 => {
@@ -97,7 +93,7 @@ fn main() {
             x => {
                warn!("Unknown hotkey {}", x);
             }
-         }
+         },
          winapi::um::winuser::WM_CLIPBOARDUPDATE => {
             trace!("Clipboard updated!");
             if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
@@ -199,9 +195,7 @@ fn clear(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardTex
 
 fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: bool) {
    if !managing_clipboard {
-      trace!(
-         "Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)"
-      );
+      trace!("Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)");
       return;
    }
 
