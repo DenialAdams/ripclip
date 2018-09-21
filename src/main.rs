@@ -112,13 +112,13 @@ fn main() {
                };
                win::add_clipboard_format_listener(&window).unwrap();
                if config.prevent_duplicate_push && Some(&clipboard_text) == clipboard_stack.last() {
+                  trace!("Ignoring push because it was a duplicate");
+               } else {
                   if Some(clipboard_stack.len()) == config.max_stack_size {
                      clipboard_stack.remove(0);
                   }
                   clipboard_stack.push(clipboard_text);
                   trace!("Pushed clipboard contents onto stack");
-               } else {
-                  trace!("Ignoring push because it was a duplicate");
                }
                managing_clipboard = true;
             } else {
