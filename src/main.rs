@@ -11,6 +11,15 @@ extern crate winapi;
 mod config;
 mod win;
 
+const POP_ID: usize = 100;
+const SWAP_ID: usize = 101;
+const CLEAR_ID: usize = 102;
+const EXIT_ID: usize = 103;
+
+use std::sync::atomic::{self, AtomicPtr};
+
+static mut CLIPSTACK_WINDOW: AtomicPtr<winapi::shared::windef::HWND__> = AtomicPtr::new(std::ptr::null_mut());
+
 fn main() {
    pretty_env_logger::init();
 
@@ -35,6 +44,14 @@ fn main() {
       0,
       &win::WindowParent::MessageOnly,
    ).unwrap();
+   unsafe { CLIPSTACK_WINDOW.store(window.raw(), atomic::Ordering::SeqCst) };
+
+   let mut menu = win::create_popup_menu().unwrap();
+   menu.append_text(POP_ID, "Pop").unwrap();
+   menu.append_text(SWAP_ID, "Swap").unwrap();
+   menu.append_text(CLEAR_ID, "Clear").unwrap();
+   menu.append_line_break(1).unwrap();
+   menu.append_text(EXIT_ID, "Exit").unwrap();
 
    let mut clipboard_stack: Vec<win::ClipboardText> = if let Some(max_stack_size) = config.max_stack_size {
       Vec::with_capacity(max_stack_size)
@@ -44,7 +61,7 @@ fn main() {
    let mut managing_clipboard = false;
 
    let _trayicon = if config.show_tray_icon {
-      Some(win::add_tray_icon(&window, 0).unwrap())
+      Some(win::add_tray_icon(&window, 0, 100, "Clipstack").unwrap())
    } else {
       None
    };
@@ -63,70 +80,24 @@ fn main() {
    loop {
       let message = win::get_message(
          Some(&window),
-         winapi::um::winuser::WM_HOTKEY,
-         winapi::um::winuser::WM_CLIPBOARDUPDATE,
+         0,
+         0,
       ).unwrap();
       match message.message {
          winapi::um::winuser::WM_HOTKEY => match message.w_param {
             0 => {
-               if managing_clipboard {
-                  clipboard_stack.pop();
-                  trace!("Popped element off clipboard stack")
-               }
-               managing_clipboard = true;
-
-               win::remove_clipboard_format_listener(&window).unwrap();
-               {
-                  let clipboard = win::open_clipboard(&window).unwrap();
-                  let owned_clipboard = clipboard.empty().unwrap();
-                  if let Some(text) = clipboard_stack.last() {
-                     owned_clipboard.set_text(text.clone()).unwrap();
-                     trace!("Placed top of stack in clipboard");
-                  } else {
-                     trace!("Nothing on stack to place in clipboard");
-                  }
-               }
-               win::add_clipboard_format_listener(&window).unwrap();
+               pop(&window, &mut clipboard_stack, &mut managing_clipboard);
             }
             1 => {
-               clipboard_stack.clear();
-               win::remove_clipboard_format_listener(&window).unwrap();
-               {
-                  let clipboard = win::open_clipboard(&window).unwrap();
-                  clipboard.empty().unwrap();
-               }
-               win::add_clipboard_format_listener(&window).unwrap();
-               managing_clipboard = true;
-               trace!("Cleared stack");
+               clear(&window, &mut clipboard_stack, &mut managing_clipboard);
             }
             2 => {
-               if !managing_clipboard {
-                  trace!(
-                     "Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)"
-                  );
-                  continue;
-               }
-               if clipboard_stack.len() >= 2 {
-                  let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
-                  clipboard_stack.push(second_from_top);
-                  win::remove_clipboard_format_listener(&window).unwrap();
-                  {
-                     let clipboard = win::open_clipboard(&window).unwrap();
-                     let owned_clipboard = clipboard.empty().unwrap();
-                     owned_clipboard
-                        .set_text(clipboard_stack.last().unwrap().clone())
-                        .unwrap();
-                  }
-                  win::add_clipboard_format_listener(&window).unwrap();
-                  trace!("Swapped top 2 elements of stack")
-               } else {
-                  trace!("Stack too small to swap")
-               }
+               swap(&window, &mut clipboard_stack, managing_clipboard);
             }
-            _ => {
-               unreachable!();
+            x => {
+               warn!("Unknown hotkey {}", x);
             }
-         },
+         }
          winapi::um::winuser::WM_CLIPBOARDUPDATE => {
             trace!("Clipboard updated!");
             if win::is_clipboard_format_available(win::ClipboardFormat::UnicodeText) {
@@ -140,7 +111,7 @@ fn main() {
                   text_buf
                };
                win::add_clipboard_format_listener(&window).unwrap();
-               if !config.prevent_duplicate_push || Some(&clipboard_text) != clipboard_stack.last() {
+               if config.prevent_duplicate_push && Some(&clipboard_text) == clipboard_stack.last() {
                   if Some(clipboard_stack.len()) == config.max_stack_size {
                      clipboard_stack.remove(0);
                   }
@@ -154,10 +125,101 @@ fn main() {
                managing_clipboard = false;
             }
          }
+         winapi::um::winuser::WM_CONTEXTMENU => {
+            let x = winapi::shared::windowsx::GET_X_LPARAM(message.w_param as isize);
+            let y = winapi::shared::windowsx::GET_Y_LPARAM(message.w_param as isize);
+            win::set_foreground_window(&window).unwrap();
+            win::draw_popup_menu(&menu, x, y, &window).unwrap();
+         }
+         winapi::um::winuser::WM_QUIT => {
+            break;
+         }
+         winapi::um::winuser::WM_COMMAND => {
+            if message.w_param & 0xFFFF_FFFF_0000_0000 == 0 {
+               // Menu event
+               match message.w_param & 0x0000_0000_FFFF_FFFF {
+                  POP_ID => {
+                     pop(&window, &mut clipboard_stack, &mut managing_clipboard);
+                  }
+                  SWAP_ID => {
+                     swap(&window, &mut clipboard_stack, managing_clipboard);
+                  }
+                  CLEAR_ID => {
+                     clear(&window, &mut clipboard_stack, &mut managing_clipboard);
+                  }
+                  EXIT_ID => {
+                     break;
+                  }
+                  _ => {
+                     warn!("Unknown menu command");
+                     continue;
+                  }
+               }
+            }
+         }
          _ => {
             continue;
          }
       }
+   }
+}
+
+fn pop(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: &mut bool) {
+   if *managing_clipboard {
+      clipboard_stack.pop();
+      trace!("Popped element off clipboard stack")
+   }
+   *managing_clipboard = true;
+
+   win::remove_clipboard_format_listener(window).unwrap();
+   {
+      let clipboard = win::open_clipboard(window).unwrap();
+      let owned_clipboard = clipboard.empty().unwrap();
+      if let Some(text) = clipboard_stack.last() {
+         owned_clipboard.set_text(text.clone()).unwrap();
+         trace!("Placed top of stack in clipboard");
+      } else {
+         trace!("Nothing on stack to place in clipboard");
+      }
+   }
+   win::add_clipboard_format_listener(window).unwrap();
+}
+
+fn clear(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: &mut bool) {
+   clipboard_stack.clear();
+   win::remove_clipboard_format_listener(window).unwrap();
+   {
+      let clipboard = win::open_clipboard(window).unwrap();
+      clipboard.empty().unwrap();
+   }
+   win::add_clipboard_format_listener(window).unwrap();
+   *managing_clipboard = true;
+   trace!("Cleared stack");
+}
+
+fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: bool) {
+   if !managing_clipboard {
+      trace!(
+         "Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)"
+      );
+      return;
+   }
+
+   if clipboard_stack.len() >= 2 {
+      let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
+      clipboard_stack.push(second_from_top);
+      win::remove_clipboard_format_listener(window).unwrap();
+      {
+         let clipboard = win::open_clipboard(window).unwrap();
+         let owned_clipboard = clipboard.empty().unwrap();
+         owned_clipboard
+            .set_text(clipboard_stack.last().unwrap().clone())
+            .unwrap();
+      }
+      win::add_clipboard_format_listener(window).unwrap();
+      trace!("Swapped top 2 elements of stack");
+   } else {
+      trace!("Stack too small to swap");
    }
 }
 
@@ -167,5 +229,12 @@ unsafe extern "system" fn on_message(
    w_param: usize,
    l_param: isize,
 ) -> winapi::shared::minwindef::LRESULT {
+   let l_param_u: usize = std::mem::transmute::<_, _>(l_param);
+   if (l_param_u & 0x0000_0000_0000_ffff) as u32 == winapi::um::winuser::WM_CONTEXTMENU {
+      let result = winapi::um::winuser::PostMessageW(handle, winapi::um::winuser::WM_CONTEXTMENU, w_param, l_param);
+      if result == 0 {
+         warn!("Failed to post context menu event");
+      }
+   }
    winapi::um::winuser::DefWindowProcW(handle, umsg, w_param, l_param)
 }
