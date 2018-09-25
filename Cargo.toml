@@ -1,7 +1,8 @@
 [package]
 name = "clipstack"
 version = "0.1.0"
-authors = ["Richard McCormack <rmccormack@ebsco.com>"]
+authors = ["Richard McCormack <brick@brick.codes>"]
+build = "build.rs"
 
 [dependencies]
 bitflags = "1"
@@ -9,6 +10,9 @@ dirs = "1"
 log = "0.4"
 pretty_env_logger = "0.2"
 winapi = { version = "0.3", features = ["commctrl", "winuser", "errhandlingapi", "winbase", "shellapi", "windowsx"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
 
 [profile.release]
 lto = true
