@@ -862,8 +862,9 @@ pub fn add_tray_icon<'a>(
    id: u32,
    callback_id: u32,
    tooltip: &str,
+   module_hande: &ModuleHandle,
 ) -> Result<TrayIcon<'a>, ErrorCode> {
-   let icon = unsafe { winapi::um::winuser::LoadIconW(ptr::null_mut(), winapi::um::winuser::IDI_APPLICATION) };
+   let icon = unsafe { winapi::um::winuser::LoadIconW(module_hande.0.as_ptr(), 1usize as *const u16) };
 
    if icon.is_null() {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };

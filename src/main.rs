@@ -61,7 +61,7 @@ fn main() {
    let mut managing_clipboard = false;
 
    let _trayicon = if config.show_tray_icon {
-      Some(win::add_tray_icon(&window, 0, 100, "Clipstack").unwrap())
+      Some(win::add_tray_icon(&window, 0, 100, "Clipstack", &module).unwrap())
    } else {
       None
    };
