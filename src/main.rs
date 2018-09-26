@@ -75,15 +75,15 @@ fn main() {
    loop {
       let message = win::get_message(Some(&window), 0, 0).unwrap();
       match message.message {
-         winapi::um::winuser::WM_HOTKEY => match message.w_param {
-            0 => {
+         winapi::um::winuser::WM_HOTKEY => match message.w_param as u16 {
+            POP_HOTKEY_ID => {
                pop(&window, &mut clipboard_stack, &mut managing_clipboard);
             }
-            1 => {
-               clear(&window, &mut clipboard_stack, &mut managing_clipboard);
-            }
-            2 => {
+            SWAP_HOTKEY_ID => {
                swap(&window, &mut clipboard_stack, managing_clipboard);
+            }
+            CLEAR_HOTKEY_ID => {
+               clear(&window, &mut clipboard_stack, &mut managing_clipboard);
             }
             x => {
                warn!("Unknown hotkey {}", x);
