@@ -521,6 +521,25 @@ pub fn register_hotkey(
    Ok(())
 }
 
+pub fn unregister_hotkey(
+   hwnd: Option<&WindowHandle>,
+   id: u16,
+) -> Result<(), ErrorCode> {
+   let result = unsafe {
+      winapi::um::winuser::UnregisterHotKey(
+         hwnd.map_or(ptr::null_mut(), |x| x.inner.as_ptr()),
+         mem::transmute::<u32, i32>(u32::from(id)),
+      )
+   };
+
+   if result == 0 {
+      let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+      return Err(ErrorCode(code));
+   }
+
+   Ok(())
+}
+
 pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
    let mut module_handle: winapi::shared::minwindef::HMODULE = unsafe { mem::uninitialized() };
 
