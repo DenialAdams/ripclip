@@ -141,7 +141,7 @@ fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
 pub fn load_config() -> Result<Config, ParseError> {
    let path_opt = dirs::config_dir();
    if let Some(mut path) = path_opt {
-      path.push(PathBuf::from("Ripclip"));
+      path.push(PathBuf::from("ripclip"));
       // Maybe it already exists, maybe not.
       // We ignore errors because it will be handled when we try to
       // write/read the configuration
