@@ -3,6 +3,11 @@ name = "ripclip"
 version = "0.4.0"
 authors = ["Richard McCormack <brick@brick.codes>"]
 build = "build.rs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/DenialAdams/ripclip"
+description = "Stack based clipboard replacement"
+categories = ["command-line-utilities"]
+keywords = ["clipboard", "stack"]
 
 [dependencies]
 bitflags = "1"
