@@ -11,8 +11,8 @@ const DEFAULT_CONFIG: &[u8] = b"\
 max_stack_size = 100
 show_tray_icon = true
 pop_keybinding = Control + Shift + C
-clear_keybinding = None
 swap_keybinding = None
+clear_keybinding = None
 prevent_duplicate_push = false
 ";
 
