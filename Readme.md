@@ -1,4 +1,5 @@
 # Ripclip
+[![ripclip crate](https://img.shields.io/crates/v/ripclip.svg)](https://crates.io/crates/ripclip)
 ## Description
 Turns your windows clipboard into a stack. Everything you copy is pushed onto the top. Popping is done with a configurable hotkey (default Control + Shift + C.) Check the configuration file for all options.
 ## Configuration
