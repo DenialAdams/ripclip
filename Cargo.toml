@@ -8,6 +8,9 @@ repository = "https://github.com/DenialAdams/ripclip"
 description = "Stack based clipboard replacement"
 categories = ["command-line-utilities"]
 keywords = ["clipboard", "stack"]
+exclude = [
+    "res/*",
+]
 
 [dependencies]
 bitflags = "1"
