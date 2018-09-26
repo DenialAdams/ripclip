@@ -141,12 +141,12 @@ fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
 pub fn load_config() -> Result<Config, ParseError> {
    let path_opt = dirs::config_dir();
    if let Some(mut path) = path_opt {
-      path.push(PathBuf::from("Clipstack"));
+      path.push(PathBuf::from("Ripclip"));
       // Maybe it already exists, maybe not.
       // We ignore errors because it will be handled when we try to
       // write/read the configuration
       let _ = fs::create_dir(&path);
-      path.push(PathBuf::from("clipstack.conf"));
+      path.push(PathBuf::from("ripclip.conf"));
       if let Ok(file) = File::open(&path) {
          let mut config = Config::default();
          for (i, line) in BufReader::new(file).lines().enumerate() {

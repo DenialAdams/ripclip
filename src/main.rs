@@ -35,7 +35,7 @@ fn main() {
    };
 
    let module = win::get_module_handle_ex().unwrap();
-   let class = win::register_class_ex(&module, Some(on_message), "ClipStack_class").unwrap();
+   let class = win::register_class_ex(&module, Some(on_message), "ripclip_class").unwrap();
 
    let window = win::create_window_ex(
       0x0000_0000,
@@ -63,8 +63,8 @@ fn main() {
    };
    let mut managing_clipboard = false;
 
-   let mut trayicon = if config.show_tray_icon {
-      Some(win::add_tray_icon(&window, 0, 100, "Clipstack", &module).unwrap())
+   let mut _trayicon = if config.show_tray_icon {
+      Some(win::add_tray_icon(&window, 0, 100, "ripclip", &module).unwrap())
    } else {
       None
    };
@@ -158,10 +158,10 @@ fn main() {
                            set_keybindings(&config, &window);
                            if config.show_tray_icon {
                               // note: intentionally two lines because the destructor matters!
-                              trayicon = None;
-                              trayicon = Some(win::add_tray_icon(&window, 0, 100, "Clipstack", &module).unwrap());
+                              _trayicon = None;
+                              _trayicon = Some(win::add_tray_icon(&window, 0, 100, "ripclip", &module).unwrap());
                            } else {
-                              trayicon = None;
+                              _trayicon = None;
                            };
                            trace!("Successfully reloaded configuration");
                         },
@@ -231,7 +231,7 @@ fn clear(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardTex
 
 fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: bool) {
    if !managing_clipboard {
-      trace!("Can't swap when the clipboard is not being managed by clipstack (clipboard contains non-text)");
+      trace!("Can't swap when the clipboard is not being managed by ripclip (clipboard contains non-text)");
       return;
    }
 

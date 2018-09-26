@@ -1,6 +1,6 @@
 [package]
-name = "clipstack"
-version = "0.1.0"
+name = "ripclip"
+version = "0.4.0"
 authors = ["Richard McCormack <brick@brick.codes>"]
 build = "build.rs"
 
