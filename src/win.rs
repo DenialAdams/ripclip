@@ -515,10 +515,7 @@ pub fn register_hotkey(
    Ok(())
 }
 
-pub fn unregister_hotkey(
-   hwnd: Option<&WindowHandle>,
-   id: u16,
-) -> Result<(), ErrorCode> {
+pub fn unregister_hotkey(hwnd: Option<&WindowHandle>, id: u16) -> Result<(), ErrorCode> {
    let result = unsafe {
       winapi::um::winuser::UnregisterHotKey(
          hwnd.map_or(ptr::null_mut(), |x| x.inner.as_ptr()),

@@ -162,7 +162,7 @@ fn main() {
                               _trayicon = None;
                            };
                            trace!("Successfully reloaded configuration");
-                        },
+                        }
                         Err(e) => {
                            eprintln!("Failed to parse config: {}", e);
                         }
