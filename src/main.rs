@@ -21,8 +21,6 @@ const POP_HOTKEY_ID: u16 = 1;
 const SWAP_HOTKEY_ID: u16 = 2;
 const CLEAR_HOTKEY_ID: u16 = 3;
 
-use std::sync::atomic::{self, AtomicPtr};
-
 fn main() {
    pretty_env_logger::init();
 

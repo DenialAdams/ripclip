@@ -117,12 +117,6 @@ pub struct WindowHandle<'a> {
    class: PhantomData<&'a ClassAtom<'a>>,
 }
 
-impl<'a> WindowHandle<'a> {
-   pub unsafe fn raw(&self) -> *mut winapi::shared::windef::HWND__ {
-      self.inner.as_ptr()
-   }
-}
-
 impl<'a> Drop for WindowHandle<'a> {
    fn drop(&mut self) {
       destroy_window(self).unwrap();
