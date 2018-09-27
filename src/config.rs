@@ -151,6 +151,10 @@ pub fn load_config() -> Result<Config, ParseError> {
          let mut config = Config::default();
          for (i, line) in BufReader::new(file).lines().enumerate() {
             let line = line?;
+            let line = line.trim();
+            if line.is_empty() {
+               continue;
+            }
             let pieces: Vec<_> = line.split('=').collect();
             if pieces.len() != 2 {
                return Err(ParseError::Line(LineError::Malformed, i));
