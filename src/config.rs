@@ -29,8 +29,11 @@ impl Default for Config {
    fn default() -> Config {
       Config {
          max_stack_size: Some(100),
-         show_tray_icon: false,
-         pop_keybinding: None,
+         show_tray_icon: true,
+         pop_keybinding: Some(Hotkey {
+            key: win::VirtualKey::C,
+            modifiers: win::Modifiers::CONTROL | win::Modifiers::SHIFT,
+         }),
          clear_keybinding: None,
          swap_keybinding: None,
          prevent_duplicate_push: false,
