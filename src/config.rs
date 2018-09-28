@@ -138,6 +138,72 @@ fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
    Ok(Some(Hotkey { key, modifiers }))
 }
 
+pub fn parse_config<R>(input: R) -> Result<Config, ParseError> where R: BufRead {
+   let mut config = Config::default();
+   for (i, line) in BufReader::new(input).lines().enumerate() {
+      let line = line?;
+      let line = line.trim();
+      if line.is_empty() {
+         continue;
+      }
+      let pieces: Vec<_> = line.split('=').collect();
+      if pieces.len() != 2 {
+         return Err(ParseError::Line(LineError::Malformed, i));
+      }
+      match pieces[0].trim() {
+         "max_stack_size" => {
+            let opt_value = pieces[1].trim();
+            config.max_stack_size = if opt_value == "None" {
+               None
+            } else {
+               match opt_value.parse::<usize>() {
+                  Ok(value) => Some(value),
+                  Err(e) => return Err(ParseError::Line(LineError::ExpectedInt(e), i)),
+               }
+            }
+         }
+         "show_tray_icon" => match pieces[1].trim() {
+            "true" => {
+               config.show_tray_icon = true;
+            }
+            "false" => {
+               config.show_tray_icon = false;
+            }
+            x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
+         },
+         "prevent_duplicate_push" => match pieces[1].trim() {
+            "true" => {
+               config.prevent_duplicate_push = true;
+            }
+            "false" => {
+               config.prevent_duplicate_push = false;
+            }
+            x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
+         },
+         "pop_keybinding" => {
+            config.pop_keybinding = match parse_hotkey(pieces[1].trim()) {
+               Ok(binding) => binding,
+               Err(e) => return Err(ParseError::Line(e, i)),
+            }
+         }
+         "clear_keybinding" => {
+            config.clear_keybinding = match parse_hotkey(pieces[1].trim()) {
+               Ok(binding) => binding,
+               Err(e) => return Err(ParseError::Line(e, i)),
+            }
+         }
+         "swap_keybinding" => {
+            config.swap_keybinding = match parse_hotkey(pieces[1].trim()) {
+               Ok(binding) => binding,
+               Err(e) => return Err(ParseError::Line(e, i)),
+            }
+         }
+         x => return Err(ParseError::Line(LineError::UnknownOption(x.to_owned()), i)),
+      }
+   }
+   Ok(config)
+}
+
 pub fn load_config() -> Result<Config, ParseError> {
    let path_opt = dirs::config_dir();
    if let Some(mut path) = path_opt {
@@ -148,68 +214,7 @@ pub fn load_config() -> Result<Config, ParseError> {
       let _ = fs::create_dir(&path);
       path.push(PathBuf::from("ripclip.conf"));
       if let Ok(file) = File::open(&path) {
-         let mut config = Config::default();
-         for (i, line) in BufReader::new(file).lines().enumerate() {
-            let line = line?;
-            let line = line.trim();
-            if line.is_empty() {
-               continue;
-            }
-            let pieces: Vec<_> = line.split('=').collect();
-            if pieces.len() != 2 {
-               return Err(ParseError::Line(LineError::Malformed, i));
-            }
-            match pieces[0].trim() {
-               "max_stack_size" => {
-                  let opt_value = pieces[1].trim();
-                  config.max_stack_size = if opt_value == "None" {
-                     None
-                  } else {
-                     match opt_value.parse::<usize>() {
-                        Ok(value) => Some(value),
-                        Err(e) => return Err(ParseError::Line(LineError::ExpectedInt(e), i)),
-                     }
-                  }
-               }
-               "show_tray_icon" => match pieces[1].trim() {
-                  "true" => {
-                     config.show_tray_icon = true;
-                  }
-                  "false" => {
-                     config.show_tray_icon = false;
-                  }
-                  x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
-               },
-               "prevent_duplicate_push" => match pieces[1].trim() {
-                  "true" => {
-                     config.prevent_duplicate_push = true;
-                  }
-                  "false" => {
-                     config.prevent_duplicate_push = false;
-                  }
-                  x => return Err(ParseError::Line(LineError::ExpectedBool(x.to_owned()), i)),
-               },
-               "pop_keybinding" => {
-                  config.pop_keybinding = match parse_hotkey(pieces[1].trim()) {
-                     Ok(binding) => binding,
-                     Err(e) => return Err(ParseError::Line(e, i)),
-                  }
-               }
-               "clear_keybinding" => {
-                  config.clear_keybinding = match parse_hotkey(pieces[1].trim()) {
-                     Ok(binding) => binding,
-                     Err(e) => return Err(ParseError::Line(e, i)),
-                  }
-               }
-               "swap_keybinding" => {
-                  config.swap_keybinding = match parse_hotkey(pieces[1].trim()) {
-                     Ok(binding) => binding,
-                     Err(e) => return Err(ParseError::Line(e, i)),
-                  }
-               }
-               x => return Err(ParseError::Line(LineError::UnknownOption(x.to_owned()), i)),
-            }
-         }
+         let config = parse_config(BufReader::new(file))?;
          info!("Read configuration from {:#?}", path);
          Ok(config)
       } else {
