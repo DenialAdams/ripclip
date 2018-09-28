@@ -12,5 +12,5 @@ fn main() {
 
 #[cfg(not(windows))]
 fn main() {
-   panic("ripclip currently only runs on Windows - please file a bug if you are interested in using it!");
+   panic!("ripclip currently only runs on Windows - please file a bug if you are interested in using it!");
 }
