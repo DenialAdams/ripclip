@@ -16,6 +16,7 @@ clear_keybinding = None
 prevent_duplicate_push = false
 ";
 
+#[derive(Debug, PartialEq)]
 pub struct Config {
    pub max_stack_size: Option<usize>,
    pub show_tray_icon: bool,
@@ -41,6 +42,7 @@ impl Default for Config {
    }
 }
 
+#[derive(Debug)]
 pub enum LineError {
    Malformed,
    UnknownOption(String),
@@ -92,6 +94,7 @@ impl From<win::ParseModifierError> for LineError {
    }
 }
 
+#[derive(Debug)]
 pub enum ParseError {
    Io(io::Error),
    Line(LineError, usize),
@@ -112,6 +115,7 @@ impl fmt::Display for ParseError {
    }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Hotkey {
    pub key: win::VirtualKey,
    pub modifiers: win::Modifiers,
@@ -141,7 +145,10 @@ fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
    Ok(Some(Hotkey { key, modifiers }))
 }
 
-pub fn parse_config<R>(input: R) -> Result<Config, ParseError> where R: BufRead {
+pub fn parse_config<R>(input: R) -> Result<Config, ParseError>
+where
+   R: BufRead,
+{
    let mut config = Config::default();
    for (i, line) in BufReader::new(input).lines().enumerate() {
       let line = line?;
@@ -238,5 +245,30 @@ pub fn load_config() -> Result<Config, ParseError> {
    } else {
       warn!("Unable to determine configuration directory; Falling back to default");
       Ok(Config::default())
+   }
+}
+
+#[cfg(test)]
+mod test {
+   use super::*;
+
+   #[test]
+   fn parses_default_config() {
+      assert_eq!(parse_config(DEFAULT_CONFIG).unwrap(), Config::default());
+   }
+
+   #[test]
+   fn ignores_blank_lines() {
+      let config_blank_lines: &[u8] = b"
+
+
+
+      max_stack_size = 100
+
+
+
+
+      ";
+      assert!(parse_config(config_blank_lines).is_ok());
    }
 }
