@@ -11,6 +11,7 @@ keywords = ["clipboard", "stack"]
 exclude = [
     "res/*",
 ]
+edition = "2018"
 
 [dependencies]
 bitflags = "1"

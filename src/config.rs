@@ -5,7 +5,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::usize;
-use win;
+use crate::win;
 
 const DEFAULT_CONFIG: &[u8] = b"\
 max_stack_size = 100
