@@ -17,7 +17,7 @@ edition = "2018"
 bitflags = "1"
 dirs = "1"
 log = "0.4"
-pretty_env_logger = "0.2"
+pretty_env_logger = "0.3"
 winapi = { version = "0.3", features = ["commctrl", "winuser", "errhandlingapi", "winbase", "shellapi", "windowsx"] }
 
 [target.'cfg(windows)'.build-dependencies]
