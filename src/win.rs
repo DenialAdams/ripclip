@@ -49,12 +49,13 @@ impl Menu {
    }
 
    pub fn append_text(&mut self, id: usize, text: &str) -> Result<(), ErrorCode> {
+      let s = to_win_utf16(text);
       let result = unsafe {
          winapi::um::winuser::AppendMenuW(
             self.inner.as_ptr(),
             winapi::um::winuser::MF_STRING,
             id,
-            to_win_utf16(text).as_ptr(), // TODO: do we need to make sure this buffer does not get dropped?
+            s.as_ptr(),
          )
       };
 
