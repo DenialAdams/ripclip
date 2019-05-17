@@ -585,6 +585,7 @@ pub enum WindowParent<'a> {
    MessageOnly,
 }
 
+#[allow(clippy::too_many_arguments)] // We're roughly trying to mirror the Windows API, so the number of arguments is what it is
 pub fn create_window_ex<'a>(
    ex_style: u32,
    class_atom: &'a ClassAtom,
