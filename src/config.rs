@@ -1,3 +1,4 @@
+use crate::win;
 use dirs;
 use std::fmt;
 use std::fs::{self, File};
@@ -5,7 +6,6 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::usize;
-use crate::win;
 
 const DEFAULT_CONFIG: &[u8] = b"\
 max_stack_size = 100

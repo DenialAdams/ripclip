@@ -51,12 +51,7 @@ impl Menu {
    pub fn append_text(&mut self, id: usize, text: &str) -> Result<(), ErrorCode> {
       let s = to_win_utf16(text);
       let result = unsafe {
-         winapi::um::winuser::AppendMenuW(
-            self.inner.as_ptr(),
-            winapi::um::winuser::MF_STRING,
-            id,
-            s.as_ptr(),
-         )
+         winapi::um::winuser::AppendMenuW(self.inner.as_ptr(), winapi::um::winuser::MF_STRING, id, s.as_ptr())
       };
 
       if result == 0 {

@@ -45,7 +45,8 @@ fn main() {
       0,
       0,
       &win::WindowParent::MessageOnly,
-   ).unwrap();
+   )
+   .unwrap();
 
    let mut menu = win::create_popup_menu().unwrap();
    menu.append_text(POP_MENU_ID, "Pop").unwrap();
