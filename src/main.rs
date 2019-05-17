@@ -156,13 +156,11 @@ fn main() {
                            }
                            config = new_config;
                            set_keybindings(&config, &window);
+                           // It's important the destructor is run before we create the new tray icon
+                           _trayicon = None;
                            if config.show_tray_icon {
-                              // note: intentionally two lines because the destructor matters!
-                              _trayicon = None;
                               _trayicon = Some(win::add_tray_icon(&window, 0, 100, "ripclip", &module).unwrap());
-                           } else {
-                              _trayicon = None;
-                           };
+                           }
                            trace!("Successfully reloaded configuration");
                         }
                         Err(e) => {
