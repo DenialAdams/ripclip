@@ -156,7 +156,8 @@ fn main() {
                            }
                            config = new_config;
                            set_keybindings(&config, &window);
-                           // It's important the destructor is run before we create the new tray icon
+                           // It's important the destructor is run before we create the new tray icon,
+                           // and that we destroy the tray icon if the prior configuration had it enabled
                            _trayicon = None;
                            if config.show_tray_icon {
                               _trayicon = Some(win::add_tray_icon(&window, 0, 100, "ripclip", &module).unwrap());
