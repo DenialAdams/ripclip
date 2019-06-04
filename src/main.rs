@@ -12,6 +12,8 @@ extern crate winapi;
 mod config;
 mod win;
 
+use std::collections::VecDeque;
+
 const POP_MENU_ID: usize = 100;
 const SWAP_MENU_ID: usize = 101;
 const CLEAR_MENU_ID: usize = 102;
@@ -56,10 +58,10 @@ fn main() {
    menu.append_text(RELOAD_MENU_ID, "Reload Configuration").unwrap();
    menu.append_text(EXIT_MENU_ID, "Exit").unwrap();
 
-   let mut clipboard_stack: Vec<win::ClipboardText> = if let Some(max_stack_size) = config.max_stack_size {
-      Vec::with_capacity(max_stack_size)
+   let mut clipboard_stack: VecDeque<win::ClipboardText> = if let Some(max_stack_size) = config.max_stack_size {
+      VecDeque::with_capacity(max_stack_size)
    } else {
-      Vec::new()
+      VecDeque::new()
    };
    let mut managing_clipboard = false;
 
@@ -103,13 +105,13 @@ fn main() {
                   text_buf
                };
                win::add_clipboard_format_listener(&window).unwrap();
-               if config.prevent_duplicate_push && Some(&clipboard_text) == clipboard_stack.last() {
+               if config.prevent_duplicate_push && Some(&clipboard_text) == clipboard_stack.back() {
                   trace!("Ignoring push because it was a duplicate");
                } else {
                   if Some(clipboard_stack.len()) == config.max_stack_size {
-                     clipboard_stack.remove(0);
+                     clipboard_stack.pop_front();
                   }
-                  clipboard_stack.push(clipboard_text);
+                  clipboard_stack.push_back(clipboard_text);
                   trace!("Pushed clipboard contents onto stack");
                }
                managing_clipboard = true;
@@ -195,9 +197,9 @@ fn set_keybindings(config: &config::Config, window: &win::WindowHandle) {
    }
 }
 
-fn pop(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: &mut bool) {
+fn pop(window: &win::WindowHandle, clipboard_stack: &mut VecDeque<win::ClipboardText>, managing_clipboard: &mut bool) {
    if *managing_clipboard {
-      clipboard_stack.pop();
+      clipboard_stack.pop_back();
       trace!("Popped element off clipboard stack")
    }
    *managing_clipboard = true;
@@ -206,7 +208,7 @@ fn pop(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>
    {
       let clipboard = win::open_clipboard(window).unwrap();
       let owned_clipboard = clipboard.empty().unwrap();
-      if let Some(text) = clipboard_stack.last() {
+      if let Some(text) = clipboard_stack.back() {
          owned_clipboard.set_text(text.clone()).unwrap();
          trace!("Placed top of stack in clipboard");
       } else {
@@ -216,7 +218,11 @@ fn pop(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>
    win::add_clipboard_format_listener(window).unwrap();
 }
 
-fn clear(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: &mut bool) {
+fn clear(
+   window: &win::WindowHandle,
+   clipboard_stack: &mut VecDeque<win::ClipboardText>,
+   managing_clipboard: &mut bool,
+) {
    clipboard_stack.clear();
    win::remove_clipboard_format_listener(window).unwrap();
    {
@@ -228,7 +234,7 @@ fn clear(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardTex
    trace!("Cleared stack");
 }
 
-fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText>, managing_clipboard: bool) {
+fn swap(window: &win::WindowHandle, clipboard_stack: &mut VecDeque<win::ClipboardText>, managing_clipboard: bool) {
    if !managing_clipboard {
       trace!("Can't swap when the clipboard is not being managed by ripclip (clipboard contains non-text)");
       return;
@@ -242,7 +248,7 @@ fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText
          let clipboard = win::open_clipboard(window).unwrap();
          let owned_clipboard = clipboard.empty().unwrap();
          owned_clipboard
-            .set_text(clipboard_stack.last().unwrap().clone())
+            .set_text(clipboard_stack.back().unwrap().clone())
             .unwrap();
       }
       win::add_clipboard_format_listener(window).unwrap();
