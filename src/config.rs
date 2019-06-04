@@ -150,7 +150,7 @@ where
    R: BufRead,
 {
    let mut config = Config::default();
-   for (i, line) in BufReader::new(input).lines().enumerate() {
+   for (i, line) in input.lines().enumerate() {
       let line = line?;
       let line = line.trim();
       if line.is_empty() {
