@@ -235,8 +235,8 @@ fn swap(window: &win::WindowHandle, clipboard_stack: &mut Vec<win::ClipboardText
    }
 
    if clipboard_stack.len() >= 2 {
-      let second_from_top = clipboard_stack.swap_remove(clipboard_stack.len() - 2);
-      clipboard_stack.push(second_from_top);
+      let last_index = clipboard_stack.len() - 1;
+      clipboard_stack.swap(last_index, last_index - 1);
       win::remove_clipboard_format_listener(window).unwrap();
       {
          let clipboard = win::open_clipboard(window).unwrap();
