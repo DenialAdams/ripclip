@@ -2,6 +2,7 @@
 
 use std::iter;
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};
 use std::str::FromStr;
 use std::string::FromUtf16Error;
@@ -528,16 +529,16 @@ pub fn unregister_hotkey(hwnd: Option<&WindowHandle>, id: u16) -> Result<(), Err
 }
 
 pub fn get_module_handle_ex() -> Result<ModuleHandle, ErrorCode> {
-   let mut module_handle: winapi::shared::minwindef::HMODULE = unsafe { mem::uninitialized() };
+   let mut module_handle: MaybeUninit<winapi::shared::minwindef::HMODULE> = MaybeUninit::uninit();
 
-   let result = unsafe { winapi::um::libloaderapi::GetModuleHandleExW(0, ptr::null(), &mut module_handle) };
+   let result = unsafe { winapi::um::libloaderapi::GetModuleHandleExW(0, ptr::null(), module_handle.as_mut_ptr()) };
 
    if result == 0 {
       let code = unsafe { winapi::um::errhandlingapi::GetLastError() };
       return Err(ErrorCode(code));
    }
 
-   unsafe { Ok(ModuleHandle(NonNull::new_unchecked(module_handle))) }
+   unsafe { Ok(ModuleHandle(NonNull::new_unchecked(module_handle.assume_init()))) }
 }
 
 fn to_win_utf16(inp: &str) -> Vec<u16> {
@@ -798,10 +799,10 @@ impl From<winapi::um::winuser::MSG> for Message {
 }
 
 pub fn get_message(hwnd: Option<&WindowHandle>, min_value: u32, max_value: u32) -> Result<Message, ErrorCode> {
-   let mut message: winapi::um::winuser::MSG = unsafe { mem::uninitialized() };
+   let mut message: MaybeUninit<winapi::um::winuser::MSG> = MaybeUninit::uninit();
    let result = unsafe {
       winapi::um::winuser::GetMessageW(
-         &mut message,
+         message.as_mut_ptr(),
          hwnd.map_or(ptr::null_mut(), |x| x.inner.as_ptr()),
          min_value,
          max_value,
@@ -813,7 +814,7 @@ pub fn get_message(hwnd: Option<&WindowHandle>, min_value: u32, max_value: u32) 
       return Err(ErrorCode(code));
    }
 
-   Ok(message.into())
+   unsafe { Ok(message.assume_init().into()) }
 }
 
 pub struct TrayIcon<'a> {
