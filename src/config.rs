@@ -4,7 +4,6 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, Write};
 use std::num::ParseIntError;
-use std::path::PathBuf;
 use std::usize;
 
 const DEFAULT_CONFIG: &[u8] = b"\
@@ -124,7 +123,7 @@ pub struct Hotkey {
 fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
    let mut tokens_iter = hotkey.split('+').rev();
    let raw_key = tokens_iter.next().unwrap().trim();
-   if raw_key == "None" {
+   if raw_key == "none" {
       if tokens_iter.next() != None {
          return Err(LineError::ModifierWithNoKey);
       }
@@ -151,7 +150,8 @@ where
 {
    let mut config = Config::default();
    for (i, line) in input.lines().enumerate() {
-      let line = line?;
+      let mut line = line?;
+      line.make_ascii_lowercase();
       let line = line.trim();
       if line.is_empty() {
          continue;
@@ -163,7 +163,7 @@ where
       match pieces[0].trim() {
          "max_stack_size" => {
             let opt_value = pieces[1].trim();
-            config.max_stack_size = if opt_value == "None" {
+            config.max_stack_size = if opt_value == "none" {
                None
             } else {
                match opt_value.parse::<usize>() {
@@ -217,12 +217,12 @@ where
 pub fn load_config() -> Result<Config, ParseError> {
    let path_opt = dirs::config_dir();
    if let Some(mut path) = path_opt {
-      path.push(PathBuf::from("ripclip"));
+      path.push("ripclip");
       // Maybe it already exists, maybe not.
       // We ignore errors because it will be handled when we try to
       // write/read the configuration
       let _ = fs::create_dir(&path);
-      path.push(PathBuf::from("ripclip.conf"));
+      path.push("ripclip.conf");
       if let Ok(file) = File::open(&path) {
          let config = parse_config(BufReader::new(file))?;
          info!("Read configuration from {:#?}", path);
@@ -251,6 +251,22 @@ pub fn load_config() -> Result<Config, ParseError> {
 #[cfg(test)]
 mod test {
    use super::*;
+
+   #[test]
+   fn ignores_case() {
+      let config: &[u8] = b"
+         max_STACK_size = nonE
+         clear_keybinding = CTRL + shift + c
+      ";
+      let parsed_cfg = parse_config(config);
+      assert!(parsed_cfg.is_ok());
+      let parsed_cfg = parsed_cfg.unwrap();
+      assert!(parsed_cfg.max_stack_size.is_none());
+      assert_eq!(parsed_cfg.clear_keybinding, Some(Hotkey {
+         modifiers: win::Modifiers::CONTROL | win::Modifiers::SHIFT,
+         key: win::VirtualKey::C,
+      }));
+   }
 
    #[test]
    fn parses_default_config() {

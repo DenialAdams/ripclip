@@ -218,13 +218,12 @@ impl FromStr for Modifiers {
    type Err = ParseModifierError;
 
    fn from_str(s: &str) -> Result<Modifiers, ParseModifierError> {
-      let s = s.to_ascii_lowercase();
-      Ok(match s.as_ref() {
+      Ok(match s {
          "alt" => Modifiers::ALT,
-         "control" | "cntrl" | "ctrl" => Modifiers::CONTROL,
+         "control" | "ctrl" => Modifiers::CONTROL,
          "shift" => Modifiers::SHIFT,
          "win" | "windows" | "super" => Modifiers::WIN,
-         _ => return Err(ParseModifierError::UnknownModifier(s)),
+         _ => return Err(ParseModifierError::UnknownModifier(s.into())),
       })
    }
 }
@@ -354,8 +353,7 @@ impl FromStr for VirtualKey {
    type Err = ParseVirtualKeyError;
 
    fn from_str(s: &str) -> Result<VirtualKey, ParseVirtualKeyError> {
-      let s = s.to_ascii_lowercase();
-      Ok(match s.as_ref() {
+      Ok(match s {
          "left click" | "left button" => VirtualKey::LeftClick,
          "right click" | "right button" => VirtualKey::RightClick,
          "cancel" => VirtualKey::Cancel,
@@ -468,7 +466,7 @@ impl FromStr for VirtualKey {
          "right alt" => VirtualKey::RightAlt,
          "play" => VirtualKey::Play,
          "zoom" => VirtualKey::Zoom,
-         _ => return Err(ParseVirtualKeyError::UnknownKey(s)),
+         _ => return Err(ParseVirtualKeyError::UnknownKey(s.into())),
       })
    }
 }
