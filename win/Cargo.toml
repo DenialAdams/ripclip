@@ -1,0 +1,12 @@
+[package]
+name = "win"
+version = "0.1.0"
+authors = ["Richard McCormack <brick@brick.codes>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/DenialAdams/ripclip"
+description = "Safe-ish winapi wrapper used by ripclip"
+edition = "2018"
+
+[dependencies]
+bitflags = "1"
+winapi = { version = "0.3", features = ["errhandlingapi", "winbase", "shellapi"] }

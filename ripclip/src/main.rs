@@ -1,17 +1,8 @@
-#![feature(nll)]
 #![windows_subsystem = "windows"]
 
-#[macro_use]
-extern crate bitflags;
-extern crate dirs;
-extern crate pretty_env_logger;
-#[macro_use]
-extern crate log;
-extern crate winapi;
-
 mod config;
-mod win;
 
+use log::{trace, warn};
 use std::collections::VecDeque;
 
 const POP_MENU_ID: usize = 100;
@@ -148,13 +139,13 @@ fn main() {
                      match config::load_config() {
                         Ok(new_config) => {
                            if config.pop_keybinding.is_some() {
-                              win::unregister_hotkey(Some(&window), POP_HOTKEY_ID).unwrap();
+                              win::hotkey::unregister_hotkey(Some(&window), POP_HOTKEY_ID).unwrap();
                            }
                            if config.swap_keybinding.is_some() {
-                              win::unregister_hotkey(Some(&window), SWAP_HOTKEY_ID).unwrap();
+                              win::hotkey::unregister_hotkey(Some(&window), SWAP_HOTKEY_ID).unwrap();
                            }
                            if config.clear_keybinding.is_some() {
-                              win::unregister_hotkey(Some(&window), CLEAR_HOTKEY_ID).unwrap();
+                              win::hotkey::unregister_hotkey(Some(&window), CLEAR_HOTKEY_ID).unwrap();
                            }
                            config = new_config;
                            set_keybindings(&config, &window);
@@ -187,13 +178,13 @@ fn main() {
 
 fn set_keybindings(config: &config::Config, window: &win::WindowHandle) {
    if let Some(hotkey) = &config.pop_keybinding {
-      win::register_hotkey(Some(&window), POP_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
+      win::hotkey::register_hotkey(Some(&window), POP_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
    }
    if let Some(hotkey) = &config.swap_keybinding {
-      win::register_hotkey(Some(&window), SWAP_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
+      win::hotkey::register_hotkey(Some(&window), SWAP_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
    }
    if let Some(hotkey) = &config.clear_keybinding {
-      win::register_hotkey(Some(&window), CLEAR_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
+      win::hotkey::register_hotkey(Some(&window), CLEAR_HOTKEY_ID, hotkey.modifiers, hotkey.key).unwrap();
    }
 }
 

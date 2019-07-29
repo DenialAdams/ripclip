@@ -1,5 +1,5 @@
-use crate::win;
 use dirs;
+use log::{info, warn};
 use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, Write};
@@ -26,14 +26,19 @@ pub struct Config {
    pub prevent_duplicate_push: bool,
 }
 
+#[cfg(windows)]
+type Modifiers = win::hotkey::Modifiers;
+#[cfg(unix)]
+type Modifiers = x::hotkey::Modifiers;
+
 impl Default for Config {
    fn default() -> Config {
       Config {
          max_stack_size: Some(100),
          show_tray_icon: true,
          pop_keybinding: Some(Hotkey {
-            key: win::VirtualKey::C,
-            modifiers: win::Modifiers::CONTROL | win::Modifiers::SHIFT,
+            key: win::hotkey::VirtualKey::C,
+            modifiers: Modifiers::CONTROL | Modifiers::SHIFT,
          }),
          clear_keybinding: None,
          swap_keybinding: None,
@@ -78,18 +83,18 @@ impl fmt::Display for LineError {
    }
 }
 
-impl From<win::ParseVirtualKeyError> for LineError {
-   fn from(e: win::ParseVirtualKeyError) -> LineError {
+impl From<win::hotkey::ParseVirtualKeyError> for LineError {
+   fn from(e: win::hotkey::ParseVirtualKeyError) -> LineError {
       match e {
-         win::ParseVirtualKeyError::UnknownKey(got) => LineError::UnknownKey(got),
+         win::hotkey::ParseVirtualKeyError::UnknownKey(got) => LineError::UnknownKey(got),
       }
    }
 }
 
-impl From<win::ParseModifierError> for LineError {
-   fn from(e: win::ParseModifierError) -> LineError {
+impl From<win::hotkey::ParseModifierError> for LineError {
+   fn from(e: win::hotkey::ParseModifierError) -> LineError {
       match e {
-         win::ParseModifierError::UnknownModifier(got) => LineError::UnknownModifier(got),
+         win::hotkey::ParseModifierError::UnknownModifier(got) => LineError::UnknownModifier(got),
       }
    }
 }
@@ -117,29 +122,29 @@ impl fmt::Display for ParseError {
 
 #[derive(Debug, PartialEq)]
 pub struct Hotkey {
-   pub key: win::VirtualKey,
-   pub modifiers: win::Modifiers,
+   pub key: win::hotkey::VirtualKey,
+   pub modifiers: win::hotkey::Modifiers,
 }
 
 fn parse_hotkey(hotkey: &str) -> Result<Option<Hotkey>, LineError> {
    let mut tokens_iter = hotkey.split('+').rev();
    let raw_key = tokens_iter.next().unwrap().trim();
    if raw_key == "None" {
-      if tokens_iter.next() != None {
+      if tokens_iter.next().is_some() {
          return Err(LineError::ModifierWithNoKey);
       }
       return Ok(None);
    }
-   let key: win::VirtualKey = raw_key.parse()?;
+   let key: win::hotkey::VirtualKey = raw_key.parse()?;
    if key.is_modifier() {
       warn!(
          "Encountered a modifier key `{}` in key position while parsing hotkey. Is this intended?",
          raw_key
       );
    }
-   let mut modifiers = win::Modifiers::empty();
+   let mut modifiers = Modifiers::empty();
    for modifier in tokens_iter {
-      let modifier: win::Modifiers = modifier.trim().parse()?;
+      let modifier: Modifiers = modifier.trim().parse()?;
       modifiers |= modifier;
    }
    Ok(Some(Hotkey { key, modifiers }))
@@ -243,7 +248,7 @@ pub fn load_config() -> Result<Config, ParseError> {
          Ok(Config::default())
       }
    } else {
-      warn!("Unable to determine configuration directory; Falling back to default");
+      warn!("Unable to determine configuration directory; Falling back to the default configuration");
       Ok(Config::default())
    }
 }

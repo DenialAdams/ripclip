@@ -1,0 +1,29 @@
+[package]
+name = "ripclip"
+version = "0.5.1"
+authors = ["Richard McCormack <brick@brick.codes>"]
+build = "build.rs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/DenialAdams/ripclip"
+description = "Stack based clipboard manager"
+categories = ["command-line-utilities"]
+keywords = ["clipboard", "stack"]
+exclude = [
+    "res/*",
+]
+edition = "2018"
+
+[dependencies]
+dirs = "2"
+log = "0.4"
+pretty_env_logger = "0.3"
+
+[target.'cfg(unix)'.dependencies]
+x = { path = "../x" }
+
+[target.'cfg(windows)'.dependencies]
+win = { path = "../win" }
+winapi = { version = "0.3", features = ["windowsx"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
