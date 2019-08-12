@@ -160,7 +160,10 @@ fn unregister_class<'a>(class_atom: &mut ClassAtom<'a>) -> Result<(), ErrorCode>
    Ok(())
 }
 
+#[derive(PartialEq)]
 pub struct ErrorCode(u32);
+
+pub const ERROR_ACCESS_DENIED: ErrorCode = ErrorCode(5);
 
 impl fmt::Display for ErrorCode {
    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
