@@ -6,7 +6,7 @@ Turns your windows clipboard into a stack! Everything you copy is pushed onto th
 ### Stack De-Duplication
 If the same item is copied repeatedly, ripclip can automatically identify this and ignore the duplicate copies.
 ### Tray Icon
-A small, unobtrusive tray icon that lets you know ripclip is still running. May be disabled in the configuration.
+A small, unobtrusive tray icon that lets you know ripclip is still running.
 ### Configurable
 All keybindings are configurable, and extra features (above) may be disabled.
 ### Robust
