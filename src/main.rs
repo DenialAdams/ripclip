@@ -258,39 +258,37 @@ fn swap(window: &win::WindowHandle, clipboard_stack: &mut VecDeque<win::Clipboar
    }
 }
 
-fn open_clipboard_with_backoff(hwnd: &win::WindowHandle) -> Result<win::ClipboardHandle, backoff::Error<win::ErrorCode>> {
+fn open_clipboard_with_backoff(hwnd: &win::WindowHandle) -> Result<win::ClipboardHandle, win::ErrorCode> {
    // On Windows, only one application may have the clipboard open at a time
    // Some applications fight us for the clipboard (especially after an operation),
    // and so to avoid crashing we try to access the clipboard several times in a short succession.
-   // If we still can't access the keyboard after a long time (couple of hundred ms),
+   // If we still can't access the clipboard after a long time (couple of hundred ms),
    // the clipboard stack will be in a confusing state for the user.
    // Currently, we will panic in such scenarios, but in the future (TODO)
-   // we will give back control of the stack and use a notification to let the user
+   // we may give back control of the stack and use a notification to let the user
    // know that there was an issue accessing the clipboard and try to recover.
    use std::time::Duration;
-   use backoff::{ExponentialBackoff, Operation};
-
-   let mut op = || {
-      let err_val = win::open_clipboard(hwnd);
-      match err_val {
-         Err(c) => {
-            if c == win::ERROR_ACCESS_DENIED {
-               trace!("Failed to open clipboard, backing off");
-               Err(backoff::Error::Transient(c))
+   let mut sleep_duration = Duration::from_millis(1);
+   let mut open_result = win::open_clipboard(hwnd);
+   while sleep_duration < Duration::from_millis(500) {
+      // Try to open clipboard
+      match open_result {
+         Err(ref c) => {
+            if *c == win::ERROR_ACCESS_DENIED {
+               trace!("Clipboard is locked, backing off");
             } else {
-               Err(backoff::Error::Permanent(c))
+               break;
             }
          }
          Ok(v) => {
-            Ok(v)
+            return Ok(v);
          }
       }
-   };
-   let mut backoff = ExponentialBackoff::default();
-   backoff.randomization_factor = 0.0;
-   backoff.max_elapsed_time = Some(Duration::from_millis(500));
-   backoff.initial_interval = Duration::from_millis(10);
-   op.retry(&mut backoff)
+      std::thread::sleep(sleep_duration);
+      sleep_duration *= 2;
+      open_result = win::open_clipboard(hwnd);
+   }
+   open_result
 }
 
 unsafe extern "system" fn on_message(
