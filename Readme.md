@@ -42,7 +42,8 @@ prevent_duplicate_push = false
 ```
 Whether or not to prevent duplicate items from being pushed onto the stack.
 ## Known Quirks
-Some terminal emulators for windows abuse (IMO) the windows clipboard by putting whatever you highlight into the clipboard, attempting to emulate common functionality in linux. That clogs up the stack, annoyingly.
+* Some terminal emulators for windows abuse (IMO) the windows clipboard by putting whatever you highlight into the clipboard, attempting to emulate common functionality in linux. That clogs up the stack, annoyingly. Look into your terminal emulator settings and see if this functionality can be disabled.
+* If another application tries to access the clipboard simultaneously and ripclip beats it to the punch, the other application might fail badly as it fails to access the clipboard (such as displaying an error popup, or worst-case, crashing.) There's not a lot that can be done about this; race conditions are inherit with the windows clipboard model. If possible, contact the author of the offending program and ask about implementing a retry policy for accessing the clipboard.
 ## Debugging
 Run with RUST_LOG=ripclip=trace as an environment variable to see debugging statements.
 ## Status
