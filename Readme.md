@@ -14,7 +14,7 @@ ripclip uses an exponential backoff policy to try accessing the clipboard in cas
 ### Multi-Platform
 Coming soon! If you're waiting for this, file an issue and it will motivate me :)
 ## Configuration
-Configuration is present at `C:\Users\{your_user}\AppData\Roaming\ripclip.` A default config file is written there when ripclip is first run.
+Configuration is present at `C:\Users\%username%\AppData\Roaming\ripclip.` A default config file is written there when ripclip is first run.
 
 The configuration options are as follows:
 ```
@@ -40,7 +40,7 @@ The keybinding to remove all items from the stack.
 ```
 prevent_duplicate_push = false
 ```
-Whether or not to prevent duplicate items from being pushed onto the stack.
+Whether or not to prevent duplicate items from being pushed onto the stack. This only applies to the topmost item.
 ## Known Quirks
 * Some terminal emulators for windows abuse (IMO) the windows clipboard by putting whatever you highlight into the clipboard, attempting to emulate common functionality in linux. That clogs up the stack, annoyingly. Look into your terminal emulator settings and see if this functionality can be disabled.
 * If another application tries to access the clipboard simultaneously and ripclip beats it to the punch, the other application might fail badly as it fails to access the clipboard (such as displaying an error popup, or worst-case, crashing.) There's not a lot that can be done about this; race conditions are inherit with the windows clipboard model. If possible, contact the author of the offending program and ask about implementing a retry policy for accessing the clipboard.
