@@ -160,7 +160,7 @@ fn unregister_class<'a>(class_atom: &mut ClassAtom<'a>) -> Result<(), ErrorCode>
    Ok(())
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct ErrorCode(u32);
 
 pub const ERROR_ACCESS_DENIED: ErrorCode = ErrorCode(5);

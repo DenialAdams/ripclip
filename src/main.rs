@@ -267,25 +267,25 @@ fn open_clipboard_with_backoff(hwnd: &win::WindowHandle) -> Result<win::Clipboar
    // Currently, we will panic in such scenarios, but in the future (TODO)
    // we may give back control of the stack and use a notification to let the user
    // know that there was an issue accessing the clipboard and try to recover.
-   use std::time::Duration;
+
+   use std::time::{Duration, Instant};
+   use rand::Rng;
+   use rand::rngs::OsRng;
+   use rand::distributions::uniform::Uniform;
+
    let mut sleep_duration = Duration::from_millis(1);
    let mut open_result = win::open_clipboard(hwnd);
-   while sleep_duration < Duration::from_millis(500) {
+   let start_time = Instant::now();
+   while start_time.elapsed() <= Duration::from_millis(500) {
       // Try to open clipboard
       match open_result {
-         Err(ref c) => {
-            if *c == win::ERROR_ACCESS_DENIED {
-               trace!("Clipboard is locked, backing off");
-            } else {
-               break;
-            }
-         }
-         Ok(v) => {
-            return Ok(v);
-         }
+         Err(win::ERROR_ACCESS_DENIED) => trace!("Clipboard is locked, backing off"),
+         _ => break,
       }
       std::thread::sleep(sleep_duration);
-      sleep_duration *= 2;
+      // "Decorrelated jitter"
+      let range = Uniform::new_inclusive(Duration::from_millis(1), sleep_duration * 3);
+      sleep_duration = std::cmp::min(Duration::from_millis(50), OsRng.sample(range));
       open_result = win::open_clipboard(hwnd);
    }
    open_result
