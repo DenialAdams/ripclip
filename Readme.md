@@ -20,7 +20,7 @@ The configuration options are as follows:
 ```
 max_stack_size = 100
 ```
-The maximum size of the stack. Any further items copied will push out the oldest (bottom) element of the stack. This can be `None` for a cliboard stack limited only by available memory.
+The maximum size of the stack. Any further items copied will push out the oldest (bottom) element of the stack. This can be `None` for a clipboard stack limited only by available memory.
 ```
 show_tray_icon = true
 ```
