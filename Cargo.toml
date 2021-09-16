@@ -15,7 +15,7 @@ edition = "2018"
 
 [dependencies]
 bitflags = "1"
-dirs = "3"
+dirs = "4"
 log = "0.4"
 pretty_env_logger = "0.4"
 rand = "0.7"
